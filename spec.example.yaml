@@ -1,0 +1,564 @@
+project:
+  name: "my-tst-tf"
+  profile: "mzc"
+  region: "ap-southeast-1"
+  env: "tst"
+
+  resources:
+    - iam_roles:
+        - name: "my-tst-tf-eks-cls-iam-role"
+          description: "IAM role for EKS control plane"
+          assume_role_policy: '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"eks.amazonaws.com"},"Action":"sts:AssumeRole"}]}'
+          policies:
+            - "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+          tags:
+            Name: "my-tst-tf-eks-cls-iam-role"
+            Environment: "tst"
+
+        - name: "my-tst-tf-eks-nd-iam-role"
+          description: "IAM role for EKS worker nodes"
+          assume_role_policy: '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"ec2.amazonaws.com"},"Action":"sts:AssumeRole"}]}'
+          policies:
+            - "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+            - "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+            - "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+          tags:
+            Name: "my-tst-tf-eks-nd-iam-role"
+            Environment: "tst"
+
+    - ec2_launch_templates:
+        - name: "my-tst-tf-eks-ap1-lt"
+          version: "1"
+          description: "Launch template for EKS node group my-tst-tf-eks-ng-ap1"
+          instance_type: "m6i.2xlarge"
+          block_device_mappings:
+            - device_name: "/dev/xvda"
+              ebs:
+                volume_size: 30
+                volume_type: "gp3"
+                encrypted: true
+                delete_on_termination: true
+          tags:
+            Name: "my-tst-tf-eks-ap1-lt"
+            Environment: "tst"
+
+    - vpcs:
+        - name: "my-tst-tf-vpc-ap1"
+          cidr: "10.80.0.0/16"
+          enable_dns_support: true
+          enable_dns_hostnames: true
+          instance_tenancy: "default"
+          assign_generated_ipv6_cidr_block: false
+          tags:
+            Name: "my-tst-tf-vpc-ap1"
+            Environment: "tst"
+
+    - subnets:
+        - name: "my-tst-tf-sbn-pub-ap1a"
+          vpc: "my-tst-tf-vpc-ap1"
+          availability_zone: "ap-southeast-1a"
+          cidr: "10.80.0.0/25"
+          map_public_ip_on_launch: false
+          assign_ipv6_address_on_creation: false
+          tags:
+            Name: "my-tst-tf-sbn-pub-ap1a"
+            Tier: "public"
+            Environment: "tst"
+
+        - name: "my-tst-tf-sbn-pub-ap1c"
+          vpc: "my-tst-tf-vpc-ap1"
+          availability_zone: "ap-southeast-1c"
+          cidr: "10.80.0.128/25"
+          map_public_ip_on_launch: false
+          assign_ipv6_address_on_creation: false
+          tags:
+            Name: "my-tst-tf-sbn-pub-ap1c"
+            Tier: "public"
+            Environment: "tst"
+
+        - name: "my-tst-tf-sbn-pri-ap1a"
+          vpc: "my-tst-tf-vpc-ap1"
+          availability_zone: "ap-southeast-1a"
+          cidr: "10.80.1.0/25"
+          map_public_ip_on_launch: false
+          assign_ipv6_address_on_creation: false
+          tags:
+            Name: "my-tst-tf-sbn-pri-ap1a"
+            Tier: "private"
+            Environment: "tst"
+
+        - name: "my-tst-tf-sbn-pri-ap1c"
+          vpc: "my-tst-tf-vpc-ap1"
+          availability_zone: "ap-southeast-1c"
+          cidr: "10.80.1.128/25"
+          map_public_ip_on_launch: false
+          assign_ipv6_address_on_creation: false
+          tags:
+            Name: "my-tst-tf-sbn-pri-ap1c"
+            Tier: "private"
+            Environment: "tst"
+
+        - name: "my-tst-tf-sbn-pri-ap1a"
+          vpc: "my-tst-tf-vpc-ap1"
+          availability_zone: "ap-southeast-1a"
+          cidr: "10.80.2.0/24"
+          map_public_ip_on_launch: false
+          assign_ipv6_address_on_creation: false
+          tags:
+            Name: "my-tst-tf-sbn-pri-ap1a"
+            Tier: "private"
+            Environment: "tst"
+
+        - name: "my-tst-tf-sbn-pri-ap1c"
+          vpc: "my-tst-tf-vpc-ap1"
+          availability_zone: "ap-southeast-1c"
+          cidr: "10.80.3.0/24"
+          map_public_ip_on_launch: false
+          assign_ipv6_address_on_creation: false
+          tags:
+            Name: "my-tst-tf-sbn-pri-ap1c"
+            Tier: "private"
+            Environment: "tst"
+
+    - internet_gateways:
+        - name: "my-tst-tf-igw-ap1"
+          vpc: "my-tst-tf-vpc-ap1"
+          tags:
+            Name: "my-tst-tf-igw-ap1"
+            Environment: "tst"
+
+    - nat_gateways:
+        - name: "my-tst-tf-nat-ap1a"
+          vpc: "my-tst-tf-vpc-ap1"
+          subnet: "my-tst-tf-sbn-pub-ap1a"
+          connection_type: "public"
+          tags:
+            Name: "my-tst-tf-nat-ap1a"
+            Environment: "tst"
+
+        - name: "my-tst-tf-nat-ap1c"
+          vpc: "my-tst-tf-vpc-ap1"
+          subnet: "my-tst-tf-sbn-pub-ap1c"
+          connection_type: "public"
+          tags:
+            Name: "my-tst-tf-nat-ap1c"
+            Environment: "tst"
+
+    - route_tables:
+        - name: "my-tst-tf-rtb-pub-ap1"
+          vpc: "my-tst-tf-vpc-ap1"
+          associated_subnets:
+            - "my-tst-tf-sbn-pub-ap1a"
+            - "my-tst-tf-sbn-pub-ap1c"
+          routes:
+            - destination:
+                type: "cidr"
+                value: "0.0.0.0/0"
+              target:
+                type: "internet-gateway"
+                value: "my-tst-tf-igw-ap1"
+          tags:
+            Name: "my-tst-tf-rtb-pub-ap1"
+            Environment: "tst"
+
+        - name: "my-tst-tf-rtb-pri-ap1a"
+          vpc: "my-tst-tf-vpc-ap1"
+          associated_subnets:
+            - "my-tst-tf-sbn-pri-ap1a"
+          routes:
+            - destination:
+                type: "cidr"
+                value: "0.0.0.0/0"
+              target:
+                type: "nat-gateway"
+                value: "my-tst-tf-nat-ap1a"
+          tags:
+            Name: "my-tst-tf-rtb-pri-ap1a"
+            Environment: "tst"
+
+        - name: "my-tst-tf-rtb-pod-ap1a"
+          vpc: "my-tst-tf-vpc-ap1"
+          associated_subnets:
+            - "my-tst-tf-sbn-pod-ap1a"
+          routes:
+            - destination:
+                type: "cidr"
+                value: "0.0.0.0/0"
+              target:
+                type: "nat-gateway"
+                value: "my-tst-tf-nat-ap1c"
+          tags:
+            Name: "my-tst-tf-rtb-pri-ap1c"
+            Environment: "tst"
+
+        - name: "my-tst-tf-rtb-pod-ap1c"
+          vpc: "my-tst-tf-vpc-ap1"
+          associated_subnets:
+            - "my-tst-tf-sbn-pod-ap1c"
+          routes:
+            - destination:
+                type: "cidr"
+                value: "0.0.0.0/0"
+              target:
+                type: "nat-gateway"
+                value: "my-tst-tf-nat-ap1c"
+          tags:
+            Name: "my-tst-tf-rtb-pri-ap1c"
+            Environment: "tst"
+
+    - security_groups:
+        - name: "my-tst-tf-eks-cls-sg-ap1"
+          vpc: "my-tst-tf-vpc-ap1"
+          revoke_rules_on_delete: false
+          inbound_rules:
+            - description: "Allow HTTPS from VPC"
+              protocol: "tcp"
+              port_range: 443
+              source:
+                type: "ip"
+                value: "10.80.0.0/16"
+          outbound_rules:
+            - description: "Allow all outbound"
+              protocol: "-1"
+              port_range:
+                from: 0
+                to: 0
+              destination:
+                type: "ip"
+                value: "0.0.0.0/0"
+          tags:
+            Name: "my-tst-tf-eks-cls-sg-ap1"
+            Environment: "tst"
+
+        - name: "my-tst-tf-eks-pod-sg-ap1"
+          vpc: "my-tst-tf-vpc-ap1"
+          revoke_rules_on_delete: false
+          outbound_rules:
+            - description: "Allow all outbound"
+              protocol: "-1"
+              port_range:
+                from: 0
+                to: 0
+              destination:
+                type: "ip"
+                value: "0.0.0.0/0"
+          tags:
+            Name: "my-tst-tf-eks-pod-sg-ap1"
+            Environment: "tst"
+
+    - vpc_endpoints:
+        - name: "my-tst-tf-vpce-ec2-ap1"
+          vpc: "my-tst-tf-vpc-ap1"
+          service: "com.amazonaws.ap-southeast-1.ec2"
+          endpoint_type: "Interface"
+          auto_accept: false
+          private_dns_enabled: true
+          subnets:
+            - "my-tst-tf-sbn-pri-ap1a"
+            - "my-tst-tf-sbn-pri-ap1c"
+          security_groups:
+            - "my-tst-tf-eks-cls-sg-ap1"
+          tags:
+            Name: "my-tst-tf-vpce-ec2-ap1"
+            Environment: "tst"
+
+        - name: "my-tst-tf-vpce-ecr-api-ap1"
+          vpc: "my-tst-tf-vpc-ap1"
+          service: "com.amazonaws.ap-southeast-1.ecr.api"
+          endpoint_type: "Interface"
+          auto_accept: false
+          private_dns_enabled: true
+          subnets:
+            - "my-tst-tf-sbn-pri-ap1a"
+            - "my-tst-tf-sbn-pri-ap1c"
+          security_groups:
+            - "my-tst-tf-eks-cls-sg-ap1"
+          tags:
+            Name: "my-tst-tf-vpce-ecr-api-ap1"
+            Environment: "tst"
+
+        - name: "my-tst-tf-vpce-ecr-dkr-ap1"
+          vpc: "my-tst-tf-vpc-ap1"
+          service: "com.amazonaws.ap-southeast-1.ecr.dkr"
+          endpoint_type: "Interface"
+          auto_accept: false
+          private_dns_enabled: true
+          subnets:
+            - "my-tst-tf-sbn-pri-ap1a"
+            - "my-tst-tf-sbn-pri-ap1c"
+          security_groups:
+            - "my-tst-tf-eks-cls-sg-ap1"
+          tags:
+            Name: "my-tst-tf-vpce-ecr-dkr-ap1"
+            Environment: "tst"
+
+        - name: "my-tst-tf-vpce-sts-ap1"
+          vpc: "my-tst-tf-vpc-ap1"
+          service: "com.amazonaws.ap-southeast-1.sts"
+          endpoint_type: "Interface"
+          auto_accept: false
+          private_dns_enabled: true
+          subnets:
+            - "my-tst-tf-sbn-pri-ap1a"
+            - "my-tst-tf-sbn-pri-ap1c"
+          security_groups:
+            - "my-tst-tf-eks-cls-sg-ap1"
+          tags:
+            Name: "my-tst-tf-vpce-sts-ap1"
+            Environment: "tst"
+
+        - name: "my-tst-tf-vpce-logs-ap1"
+          vpc: "my-tst-tf-vpc-ap1"
+          service: "com.amazonaws.ap-southeast-1.logs"
+          endpoint_type: "Interface"
+          auto_accept: false
+          private_dns_enabled: true
+          subnets:
+            - "my-tst-tf-sbn-pri-ap1a"
+            - "my-tst-tf-sbn-pri-ap1c"
+          security_groups:
+            - "my-tst-tf-eks-cls-sg-ap1"
+          tags:
+            Name: "my-tst-tf-vpce-logs-ap1"
+            Environment: "tst"
+
+        - name: "my-tst-tf-vpce-s3-ap1"
+          vpc: "my-tst-tf-vpc-ap1"
+          service: "com.amazonaws.ap-southeast-1.s3"
+          endpoint_type: "Gateway"
+          auto_accept: false
+          route_tables:
+            - "my-tst-tf-rtb-pri-ap1a"
+            - "my-tst-tf-rtb-pod-ap1a"
+            - "my-tst-tf-rtb-pod-ap1c"
+          tags:
+            Name: "my-tst-tf-vpce-s3-ap1"
+            Environment: "tst"
+
+    - eks_clusters:
+        - name: "my-tst-tf-eks-ap1"
+          vpc: "my-tst-tf-vpc-ap1"
+          kubernetes_version: "1.35"
+          endpoint_access:
+            private: true
+            public: true
+            public_access_cidrs:
+              - "0.0.0.0/0"
+          subnet_ids:
+            - "my-tst-tf-sbn-pri-ap1a"
+            - "my-tst-tf-sbn-pri-ap1c"
+          security_groups:
+            - "my-tst-tf-eks-cls-sg-ap1"
+          cluster_logging:
+            enabled_types:
+              - "api"
+              - "audit"
+              - "authenticator"
+              - "controllerManager"
+              - "scheduler"
+            log_retention_days: 30
+          iam:
+            cluster_role_name: "my-tst-tf-eks-cls-iam-role"
+          tags:
+            Name: "my-tst-tf-eks-ap1"
+            Environment: "tst"
+
+    - eks_node_groups:
+        - name: "my-tst-tf-eks-ng-ap1_1"
+          cluster: "my-tst-tf-eks-ap1"
+          subnet_ids:
+            - "my-tst-tf-sbn-pri-ap1a"
+            - "my-tst-tf-sbn-pri-ap1c"
+          iam_role_name: "my-tst-tf-eks-nd-iam-role"
+          capacity_type: "ON_DEMAND"
+          instance_types:
+            - "t3.medium"
+          scaling:
+            desired_size: 1
+            min_size: 0
+            max_size: 1
+          disk_size: 30
+          disk_encryption: true
+          launch_template:
+            name: "my-tst-tf-eks-ap1-lt"
+            version: "1"
+          tags:
+            Name: "my-tst-tf-eks-ng-ap1"
+            Environment: "tst"
+
+    - eks_addons:
+        - name: "coredns"
+          cluster: "my-tst-tf-eks-ap1"
+          version: "v1.13.2-eksbuild.4"
+          resolve_conflicts_on_create: "OVERWRITE"
+          resolve_conflicts_on_update: "PRESERVE"
+          service_account_role_arn: ""
+          configuration_values: "{}"
+
+        - name: "eks-pod-identity-agent"
+          cluster: "my-tst-tf-eks-ap1"
+          version: "v1.3.10-eksbuild.2"
+          resolve_conflicts_on_create: "OVERWRITE"
+          resolve_conflicts_on_update: "PRESERVE"
+          service_account_role_arn: ""
+          configuration_values: "{}"
+
+        - name: "kube-proxy"
+          cluster: "my-tst-tf-eks-ap1"
+          version: "v1.35.3-eksbuild.2"
+          resolve_conflicts_on_create: "OVERWRITE"
+          resolve_conflicts_on_update: "PRESERVE"
+          service_account_role_arn: ""
+          configuration_values: "{}"
+
+        - name: "vpc-cni"
+          cluster: "my-tst-tf-eks-ap1"
+          version: "v1.21.1-eksbuild.7"
+          resolve_conflicts_on_create: "OVERWRITE"
+          resolve_conflicts_on_update: "PRESERVE"
+          service_account_role_arn: ""
+          configuration_values: |
+            {
+              "env": {
+                  "AWS_VPC_K8S_CNI_CUSTOM_NETWORK_CFG": "true",
+                  "ENABLE_PREFIX_DELEGATION": "true",
+                  "WARM_ENI_TARGET": "1",
+                  "WARM_IP_TARGET": "2",
+                  "WARM_PREFIX_TARGET": "1",
+                  "ENI_CONFIG_LABEL_DEF": "topology.kubernetes.io/zone"
+              },
+              "eniConfig": {
+                  "create": true,
+                  "region": "ap-southeast-1",
+                  "subnets": {
+                      "ap-southeast-1a": {
+                          "id": "${subnet["my-tst-tf-sbn-pod-ap1a"]}",
+                          "securityGroups": [
+                              "${security_group["my-tst-tf-eks-pod-sg-ap1"]}"
+                          ]
+                      },
+                      "ap-southeast-1c": {
+                          "id": "${subnet["my-tst-tf-sbn-pod-ap1c"]}",
+                          "securityGroups": [
+                              "${security_group["my-tst-tf-eks-pod-sg-ap1"]}"
+                          ]
+                      }
+                  }
+              }
+            }
+
+    - eks_irsa_roles:
+        - name: "my-tst-tf-albc-irsa-role"
+          cluster: "my-tst-tf-eks-ap1"
+          namespace: "kube-system"
+          service_account_name: "aws-load-balancer-controller"
+          managed_policies:
+            - "arn:aws:iam::aws:policy/ElasticLoadBalancingFullAccess"
+            - "arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess"
+          tags:
+            Name: "my-tst-tf-albc-irsa-role"
+            Environment: "tst"
+
+        - name: "my-tst-tf-ca-irsa-role"
+          cluster: "my-tst-tf-eks-ap1"
+          namespace: "kube-system"
+          service_account_name: "cluster-autoscaler"
+          inline_policies:
+            - name: "cluster-autoscaler"
+              document_json: |
+                {
+                  "Version": "2012-10-17",
+                  "Statement": [
+                    {
+                      "Effect": "Allow",
+                      "Action": [
+                        "autoscaling:DescribeAutoScalingGroups",
+                        "autoscaling:DescribeAutoScalingInstances",
+                        "autoscaling:DescribeLaunchConfigurations",
+                        "autoscaling:DescribeScalingActivities",
+                        "autoscaling:DescribeTags",
+                        "ec2:DescribeImages",
+                        "ec2:DescribeInstanceTypes",
+                        "ec2:DescribeLaunchTemplateVersions",
+                        "ec2:GetInstanceTypesFromInstanceRequirements",
+                        "eks:DescribeNodegroup"
+                      ],
+                      "Resource": "*"
+                    },
+                    {
+                      "Effect": "Allow",
+                      "Action": [
+                        "autoscaling:SetDesiredCapacity",
+                        "autoscaling:TerminateInstanceInAutoScalingGroup"
+                      ],
+                      "Resource": "*",
+                      "Condition": {
+                        "StringEquals": {
+                          "aws:ResourceTag/k8s.io/cluster-autoscaler/enabled": "true",
+                          "aws:ResourceTag/k8s.io/cluster-autoscaler/my-tst-tf-eks-ap1": "owned"
+                        }
+                      }
+                    }
+                  ]
+                }
+          tags:
+            Name: "my-tst-tf-ca-irsa-role"
+            Environment: "tst"
+
+    - eks_helm_releases:
+        - name: "aws-load-balancer-controller"
+          cluster: "my-tst-tf-eks-ap1"
+          repository: "https://aws.github.io/eks-charts"
+          chart: "aws-load-balancer-controller"
+          namespace: "kube-system"
+          create_namespace: false
+          wait: true
+          timeout: 600
+          set:
+            - name: "clusterName"
+              value: "${cluster_name}"
+            - name: "region"
+              value: "${region}"
+            - name: "serviceAccount.create"
+              value: "true"
+            - name: "serviceAccount.name"
+              value: "aws-load-balancer-controller"
+            - name: "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+              value: '${iam_role["my-tst-tf-albc-irsa-role"]}'
+
+        - name: "cluster-autoscaler"
+          cluster: "my-tst-tf-eks-ap1"
+          repository: "https://kubernetes.github.io/autoscaler"
+          chart: "cluster-autoscaler"
+          namespace: "kube-system"
+          create_namespace: false
+          wait: true
+          timeout: 600
+          set:
+            - name: "autoDiscovery.clusterName"
+              value: "${cluster_name}"
+            - name: "awsRegion"
+              value: "${region}"
+            - name: "rbac.serviceAccount.create"
+              value: "true"
+            - name: "rbac.serviceAccount.name"
+              value: "cluster-autoscaler"
+            - name: "rbac.serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+              value: '${iam_role["my-tst-tf-ca-irsa-role"]}'
+
+    - k8s_storage_classes:
+        - name: "gp3"
+          cluster: "my-tst-tf-eks-ap1"
+          provisioner: "ebs.csi.aws.com"
+          reclaim_policy: "Delete"
+          volume_binding_mode: "WaitForFirstConsumer"
+          allow_volume_expansion: true
+          parameters:
+            type: "gp3"
+            fsType: "ext4"
+          mount_options:
+            - "discard"
+          annotations:
+            storageclass.kubernetes.io/is-default-class: "true"
+          labels:
+            app.kubernetes.io/managed-by: "terraform"
