@@ -1,6 +1,6 @@
 # AWS Terraform Codex
 
-English documentation. For the Korean version, see `README.kr.md`.
+English documentation. For the Korean version, see [`README.kr.md` 한국어](./README.kr.md).
 
 This repository defines AWS infrastructure from a spec-first workflow. Requirements are declared in `spec.yaml`, the root Terraform layer keeps orchestration thin, and domain modules own the actual resource implementation.
 
