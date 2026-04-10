@@ -1,0 +1,360 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://autoever.local/spec.schema.yaml"
+title: "Terraform Spec Schema"
+description: "Schema for spec.yaml consumed by this Terraform project."
+type: object
+additionalProperties: false
+required:
+  - project
+properties:
+  project:
+    type: object
+    additionalProperties: false
+    required:
+      - name
+      - region
+      - env
+      - resources
+    properties:
+      name:
+        type: string
+        minLength: 1
+      profile:
+        type: string
+        minLength: 1
+      region:
+        type: string
+        minLength: 1
+      env:
+        type: string
+        minLength: 1
+      resources:
+        type: array
+        items:
+          type: object
+          minProperties: 1
+          maxProperties: 1
+          additionalProperties: false
+          properties:
+            iam_roles:
+              $ref: "#/$defs/generic_resource_array"
+            vpcs:
+              $ref: "#/$defs/generic_resource_array"
+            subnets:
+              $ref: "#/$defs/generic_resource_array"
+            nat_gateways:
+              $ref: "#/$defs/generic_resource_array"
+            internet_gateways:
+              $ref: "#/$defs/generic_resource_array"
+            route_tables:
+              $ref: "#/$defs/generic_resource_array"
+            network_acls:
+              $ref: "#/$defs/generic_resource_array"
+            security_groups:
+              $ref: "#/$defs/generic_resource_array"
+            vpc_endpoints:
+              $ref: "#/$defs/generic_resource_array"
+            vpc_flow_logs:
+              $ref: "#/$defs/generic_resource_array"
+            rds_subnet_groups:
+              $ref: "#/$defs/generic_resource_array"
+            rds_instances:
+              $ref: "#/$defs/generic_resource_array"
+            ec2_instances:
+              $ref: "#/$defs/generic_resource_array"
+            ec2_launch_templates:
+              $ref: "#/$defs/generic_resource_array"
+            ec2_load_balancers:
+              $ref: "#/$defs/generic_resource_array"
+            ec2_alb_target_groups:
+              $ref: "#/$defs/generic_resource_array"
+            s3_buckets:
+              $ref: "#/$defs/generic_resource_array"
+            eks_clusters:
+              type: array
+              items:
+                $ref: "#/$defs/eks_cluster_item"
+            eks_node_groups:
+              type: array
+              items:
+                $ref: "#/$defs/eks_node_group_item"
+            eks_fargate_profiles:
+              $ref: "#/$defs/generic_resource_array"
+            eks_addons:
+              type: array
+              items:
+                $ref: "#/$defs/eks_addon_item"
+            eks_helm_releases:
+              $ref: "#/$defs/generic_resource_array"
+            k8s_storage_classes:
+              $ref: "#/$defs/generic_resource_array"
+            eks_irsa_roles:
+              $ref: "#/$defs/generic_resource_array"
+            eks_access_entries:
+              $ref: "#/$defs/generic_resource_array"
+            eks_pod_identity_associations:
+              $ref: "#/$defs/generic_resource_array"
+            waf_web_acls:
+              $ref: "#/$defs/generic_resource_array"
+            cloudfront_origin_access_controls:
+              $ref: "#/$defs/generic_resource_array"
+            cloudfront_distributions:
+              $ref: "#/$defs/generic_resource_array"
+            ecs_clusters:
+              $ref: "#/$defs/generic_resource_array"
+            ecs_task_definitions:
+              $ref: "#/$defs/generic_resource_array"
+            ecs_services:
+              $ref: "#/$defs/generic_resource_array"
+            cloudwatch_log_groups:
+              $ref: "#/$defs/generic_resource_array"
+            cloudwatch_metric_alarms:
+              $ref: "#/$defs/generic_resource_array"
+            cloudwatch_dashboards:
+              $ref: "#/$defs/generic_resource_array"
+            kms_keys:
+              $ref: "#/$defs/generic_resource_array"
+            secrets_manager_secrets:
+              $ref: "#/$defs/generic_resource_array"
+            ecr_repositories:
+              $ref: "#/$defs/generic_resource_array"
+            lambda_functions:
+              $ref: "#/$defs/generic_resource_array"
+            api_gateway_http_apis:
+              $ref: "#/$defs/generic_resource_array"
+            api_gateway_http_integrations:
+              $ref: "#/$defs/generic_resource_array"
+            api_gateway_http_routes:
+              $ref: "#/$defs/generic_resource_array"
+            route53_hosted_zones:
+              $ref: "#/$defs/generic_resource_array"
+            route53_records:
+              $ref: "#/$defs/generic_resource_array"
+            acm_certificates:
+              $ref: "#/$defs/generic_resource_array"
+            dynamodb_tables:
+              $ref: "#/$defs/generic_resource_array"
+            elasticache_replication_groups:
+              $ref: "#/$defs/generic_resource_array"
+            sqs_queues:
+              $ref: "#/$defs/generic_resource_array"
+            sns_topics:
+              $ref: "#/$defs/generic_resource_array"
+            sns_subscriptions:
+              $ref: "#/$defs/generic_resource_array"
+            eventbridge_buses:
+              $ref: "#/$defs/generic_resource_array"
+            eventbridge_rules:
+              $ref: "#/$defs/generic_resource_array"
+
+$defs:
+  generic_resource_array:
+    type: array
+    items:
+      $ref: "#/$defs/generic_resource_item"
+
+  generic_resource_item:
+    type: object
+    additionalProperties: true
+
+  string_map:
+    type: object
+    additionalProperties:
+      type: string
+
+  eks_cluster_item:
+    type: object
+    additionalProperties: true
+    required:
+      - name
+      - kubernetes_version
+      - subnet_ids
+    properties:
+      name:
+        type: string
+        minLength: 1
+      vpc:
+        type: string
+      kubernetes_version:
+        type: string
+        minLength: 1
+      subnet_ids:
+        type: array
+        minItems: 1
+        items:
+          type: string
+          minLength: 1
+      security_groups:
+        type: array
+        items:
+          type: string
+      endpoint_access:
+        type: object
+        additionalProperties: true
+        properties:
+          private:
+            type: boolean
+          public:
+            type: boolean
+          public_access_cidrs:
+            type: array
+            items:
+              type: string
+      cluster_logging:
+        type: object
+        additionalProperties: true
+        properties:
+          enabled_types:
+            type: array
+            items:
+              type: string
+          log_retention_days:
+            type: integer
+            minimum: 1
+      iam:
+        type: object
+        additionalProperties: true
+        properties:
+          cluster_role_name:
+            type: string
+          cluster_role_arn:
+            type: string
+      tags:
+        $ref: "#/$defs/string_map"
+
+  eks_node_group_item:
+    type: object
+    additionalProperties: true
+    required:
+      - name
+      - cluster
+      - subnet_ids
+      - scaling
+    properties:
+      name:
+        type: string
+        minLength: 1
+      cluster:
+        type: string
+        minLength: 1
+      subnet_ids:
+        type: array
+        minItems: 1
+        items:
+          type: string
+          minLength: 1
+      iam_role_name:
+        type: string
+      iam_role_arn:
+        type: string
+      ami_type:
+        type: string
+      capacity_type:
+        type: string
+      instance_types:
+        type: array
+        items:
+          type: string
+      scaling:
+        type: object
+        additionalProperties: true
+        required:
+          - desired_size
+          - min_size
+          - max_size
+        properties:
+          desired_size:
+            type: integer
+            minimum: 0
+          min_size:
+            type: integer
+            minimum: 0
+          max_size:
+            type: integer
+            minimum: 0
+      disk_size:
+        type: integer
+        minimum: 1
+      disk_encryption:
+        type: boolean
+      launch_template:
+        type: object
+        additionalProperties: true
+        properties:
+          name:
+            type: string
+          version:
+            type: string
+      labels:
+        $ref: "#/$defs/string_map"
+      taints:
+        type: array
+        items:
+          type: object
+          additionalProperties: true
+          required:
+            - key
+            - effect
+          properties:
+            key:
+              type: string
+            value:
+              type: string
+            effect:
+              type: string
+      update_config:
+        type: object
+        additionalProperties: true
+        properties:
+          max_unavailable:
+            type: integer
+            minimum: 0
+          max_unavailable_percentage:
+            type: integer
+            minimum: 0
+            maximum: 100
+      remote_access:
+        type: object
+        additionalProperties: true
+        properties:
+          enabled:
+            type: boolean
+          ec2_ssh_key:
+            type: string
+          source_security_groups:
+            type: array
+            items:
+              type: string
+      tags:
+        $ref: "#/$defs/string_map"
+
+  eks_addon_item:
+    type: object
+    additionalProperties: true
+    required:
+      - cluster
+      - name
+    properties:
+      cluster:
+        type: string
+        minLength: 1
+      name:
+        type: string
+        minLength: 1
+      version:
+        type: string
+      resolve_conflicts_on_create:
+        type: string
+        enum:
+          - NONE
+          - OVERWRITE
+      resolve_conflicts_on_update:
+        type: string
+        enum:
+          - NONE
+          - OVERWRITE
+          - PRESERVE
+      service_account_role_arn:
+        type: string
+      configuration_values:
+        type: string

@@ -1,0 +1,65 @@
+# Codex Rules (Starlark)
+# Reference: https://developers.openai.com/codex/rules
+
+# Block Terraform plan.
+prefix_rule(
+    pattern = ["terraform", "plan"],
+    decision = "forbidden",
+    justification = "Use terraform validate only; plan is not allowed in this workspace.",
+    match = [
+        "terraform plan",
+        "terraform plan -out=tf.plan",
+    ],
+)
+
+# Block Terraform apply.
+prefix_rule(
+    pattern = ["terraform", "apply"],
+    decision = "forbidden",
+    justification = "Apply is disallowed. Provisioning execution is blocked for safety.",
+    match = [
+        "terraform apply",
+        "terraform apply -auto-approve",
+    ],
+)
+
+# Block destroy/refresh/import as additional execution-state mutations.
+prefix_rule(
+    pattern = ["terraform", "destroy"],
+    decision = "forbidden",
+    justification = "Destroy is disallowed in this workspace.",
+)
+
+prefix_rule(
+    pattern = ["terraform", "refresh"],
+    decision = "forbidden",
+    justification = "Refresh is disallowed in this workspace.",
+)
+
+prefix_rule(
+    pattern = ["terraform", "import"],
+    decision = "forbidden",
+    justification = "Import is disallowed in this workspace.",
+)
+
+# Block all AWS CLI usage.
+prefix_rule(
+    pattern = ["aws"],
+    decision = "forbidden",
+    justification = "AWS CLI execution is disallowed in this workspace.",
+    match = [
+        "aws sts get-caller-identity",
+        "aws ec2 describe-instances",
+    ],
+)
+
+# Explicitly allow validate.
+prefix_rule(
+    pattern = ["terraform", "validate"],
+    decision = "allow",
+    justification = "Terraform changes should be checked with validate only.",
+    match = [
+        "terraform validate",
+        "terraform validate -json",
+    ],
+)

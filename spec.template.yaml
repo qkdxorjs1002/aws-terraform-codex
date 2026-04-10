@@ -1,0 +1,1431 @@
+project:
+  name: "<project-name>"
+  profile: "<aws-profile-name>" # Optional: AWS shared credentials/config profile name
+  region: "<aws-region>"
+  env: "<env>"
+
+  resources:
+    # iam_roles:
+    # - name: Logical IAM role name to reference from other resources in this spec.
+    # - policies: AWS managed policy ARNs attached to the role.
+    - iam_roles:
+        - name: "<iam-role-name>"
+          description: "<iam-role-description>"
+          path: "/"
+          assume_role_policy: "{}" # JSON string trust policy document
+          max_session_duration: 3600
+          permissions_boundary: "arn:aws:iam::<account-id>:policy/<permissions-boundary-policy>"
+          policies:
+            - "arn:aws:iam::aws:policy/<policy-name>"
+          inline_policies:
+            - name: "<inline-policy-name>"
+              document_json: "{}" # JSON string policy document
+          tags:
+            Environment: "<env>"
+
+    # vpcs:
+    # - name: Logical VPC identifier used by dependent resources.
+    # - cidr: IPv4 CIDR range for the VPC.
+    - vpcs:
+        - name: "<vpc-name>"
+          cidr: "10.0.0.0/16"
+          enable_dns_support: true
+          enable_dns_hostnames: true
+          instance_tenancy: "default" # default | dedicated
+          assign_generated_ipv6_cidr_block: false
+          tags:
+            Environment: "<env>"
+
+    # subnets:
+    # - name: Logical subnet identifier.
+    # - vpc: Parent VPC logical name.
+    # - availability_zone: AZ where the subnet is created.
+    # - cidr: IPv4 CIDR range for the subnet.
+    - subnets:
+        - name: "<subnet-name>"
+          vpc: "<vpc-name>"
+          availability_zone: "<region>a"
+          cidr: "10.0.1.0/24"
+          map_public_ip_on_launch: false
+          assign_ipv6_address_on_creation: false
+          tags:
+            Tier: "private"
+            Environment: "<env>"
+
+    # nat_gateways:
+    # - name: Logical NAT Gateway identifier.
+    # - vpc: Parent VPC logical name.
+    # - subnet: Public subnet where NAT Gateway is placed.
+    # - connection_type: Connectivity model (typically public).
+    - nat_gateways:
+        - name: "<nat-gateway-name>"
+          vpc: "<vpc-name>"
+          subnet: "<public-subnet-name>"
+          connection_type: "public"
+          allocation_id: "<optional-eip-allocation-id>"
+          tags:
+            Environment: "<env>"
+
+    # internet_gateways:
+    # - name: Logical Internet Gateway identifier.
+    # - vpc: VPC logical name to attach the IGW.
+    - internet_gateways:
+        - name: "<igw-name>"
+          vpc: "<vpc-name>"
+          tags:
+            Environment: "<env>"
+
+    # route_tables:
+    # - name: Logical route table identifier.
+    # - vpc: Parent VPC logical name.
+    # - associated_subnets: Subnets associated to this route table.
+    # - routes[].destination.type/value: Destination type and value (for example CIDR).
+    # - routes[].target.type/value: Route target type and referenced target name.
+    - route_tables:
+        - name: "<route-table-name>"
+          vpc: "<vpc-name>"
+          associated_subnets:
+            - "<subnet-name>"
+          routes:
+            - destination:
+                type: "cidr"
+                value: "0.0.0.0/0"
+              target:
+                type: "internet-gateway"
+                value: "<igw-name>"
+          tags:
+            Environment: "<env>"
+
+    # network_acls:
+    # - name: Logical network ACL identifier.
+    # - vpc: Parent VPC logical name.
+    # - associated_subnets: Subnets associated with this ACL.
+    # - ingress_rules[]/egress_rules[]: Ordered stateless rules (rule_number, protocol, action, CIDR, ports).
+    - network_acls:
+        - name: "<network-acl-name>"
+          vpc: "<vpc-name>"
+          associated_subnets:
+            - "<subnet-name>"
+          ingress_rules:
+            - rule_number: 100
+              protocol: "tcp"
+              action: "allow" # allow | deny
+              cidr_block: "10.0.0.0/16"
+              from_port: 0
+              to_port: 65535
+          egress_rules:
+            - rule_number: 100
+              protocol: "tcp"
+              action: "allow" # allow | deny
+              cidr_block: "0.0.0.0/0"
+              from_port: 0
+              to_port: 65535
+          tags:
+            Environment: "<env>"
+
+    # security_groups:
+    # - name: Logical security group identifier.
+    # - vpc: Parent VPC logical name.
+    # - inbound_rules[]: Inbound rules (description, protocol, port range, source).
+    # - outbound_rules[]: Outbound rules (description, protocol, port range, destination).
+    - security_groups:
+        - name: "<security-group-name>"
+          vpc: "<vpc-name>"
+          revoke_rules_on_delete: false
+          inbound_rules:
+            - description: "<rule-description>"
+              protocol: "tcp"
+              port_range: 443
+              source:
+                type: "ip"
+                value: "0.0.0.0/0"
+          outbound_rules:
+            - description: "<rule-description>"
+              protocol: "tcp"
+              port_range: 443
+              destination:
+                type: "ip"
+                value: "0.0.0.0/0"
+          tags:
+            Environment: "<env>"
+
+    # vpc_endpoints:
+    # - name: Logical VPC endpoint identifier.
+    # - vpc: Parent VPC logical name.
+    # - service: AWS endpoint service name.
+    # - endpoint_type: Interface or Gateway endpoint type.
+    # - private_dns_enabled: Enables private DNS for Interface endpoints.
+    # - subnets/route_tables/security_groups: Attachment targets by logical names.
+    # - depends_on_vpc_endpoints: Endpoint dependencies for ordered creation.
+    - vpc_endpoints:
+        - name: "<vpc-endpoint-name>"
+          vpc: "<vpc-name>"
+          service: "com.amazonaws.<region>.<service-name>"
+          endpoint_type: "Interface" # Interface | Gateway
+          auto_accept: false
+          private_dns_enabled: true
+          policy: "{}" # JSON string endpoint policy document
+          subnets:
+            - "<subnet-name>"
+          route_tables:
+            - "<route-table-name>"
+          security_groups:
+            - "<security-group-name>"
+          depends_on_vpc_endpoints:
+            - "<vpc-endpoint-name>"
+          tags:
+            Environment: "<env>"
+
+    # vpc_flow_logs:
+    # - name: Logical flow log identifier.
+    # - vpc: VPC logical name for traffic capture.
+    # - traffic_type: Traffic type to capture (ACCEPT/REJECT/ALL).
+    # - destination_type/destination_arn: Log destination backend and target ARN.
+    # - iam_role_arn: IAM role ARN for flow logs delivery.
+    # - max_aggregation_interval: Flow log aggregation window in seconds.
+    # - log_format: Optional custom log format string.
+    - vpc_flow_logs:
+        - name: "<vpc-flow-log-name>"
+          vpc: "<vpc-name>"
+          traffic_type: "ALL" # ACCEPT | REJECT | ALL
+          destination_type: "cloud-watch-logs" # cloud-watch-logs | s3
+          destination_arn: "arn:aws:logs:<region>:<account-id>:log-group:<log-group-name>"
+          iam_role_arn: "arn:aws:iam::<account-id>:role/<flow-log-role-name>"
+          max_aggregation_interval: 600 # 60 | 600
+          log_format: "<optional-custom-log-format>"
+          destination_options:
+            file_format: "plain-text" # plain-text | parquet
+            hive_compatible_partitions: false
+            per_hour_partition: false
+          tags:
+            Environment: "<env>"
+
+    # rds_subnet_groups:
+    # - name: Logical DB subnet group identifier.
+    # - vpc: Parent VPC logical name.
+    # - availability_zones: AZs targeted for DB subnet placement.
+    # - subnets: Private subnet logical names included in the DB subnet group.
+    - rds_subnet_groups:
+        - name: "<rds-subnet-group-name>"
+          vpc: "<vpc-name>"
+          description: "<rds-subnet-group-description>"
+          availability_zones:
+            - "<region>a"
+            - "<region>c"
+          subnets:
+            - "<private-db-subnet-1>"
+            - "<private-db-subnet-2>"
+          tags:
+            Environment: "<env>"
+
+    # rds_instances:
+    # - name/identifier: Logical and AWS DB identifiers.
+    # - engine/engine_version: DB engine family and exact version.
+    # - credential.*: Authentication mode, username, and auth method.
+    # - instance_type/storage.*: Compute class and storage options.
+    # - vpc/subnet_group/security_groups: Network placement references.
+    # - publicly_accessible/multi_az/availability_zone/database_port: Connectivity and availability settings.
+    # - backup.*: Backup enablement, retention, and encryption.
+    # - auto_minor_version_upgrade/enable_delete_protection: Operational safety controls.
+    - rds_instances:
+        - name: "<rds-resource-name>"
+          engine: "postgres"
+          engine_version: "13.23"
+          identifier: "<rds-identifier>"
+          credential:
+            type: "managed" # managed | manual
+            username: "<db-username>"
+            authentication_method: "password-and-iam"
+          instance_type: "db.t3.medium"
+          storage:
+            storage_type: "gp3"
+            allocated_storage: 30
+            storage_autoscaling: true
+            max_allocated_storage: 100
+            iops: 3000
+            storage_throughput: 125
+          vpc: "<vpc-name>"
+          subnet_group: "<rds-subnet-group-name>"
+          publicly_accessible: false
+          security_groups:
+            - "<security-group-name>"
+          multi_az: false
+          availability_zone: "<region>a"
+          database_port: 5432
+          backup:
+            enabled: true
+            retention_period: 7
+            encrypted: true
+            backup_window: "03:00-04:00"
+          maintenance_window: "sun:05:00-sun:06:00"
+          monitoring_interval: 60
+          monitoring_role_arn: "arn:aws:iam::<account-id>:role/<rds-monitoring-role>"
+          performance_insights_enabled: true
+          performance_insights_kms_key_id: "arn:aws:kms:<region>:<account-id>:key/<kms-key-id>"
+          parameter_group_name: "<db-parameter-group-name>"
+          option_group_name: "<db-option-group-name>"
+          final_snapshot_identifier: "<rds-final-snapshot-id>"
+          skip_final_snapshot: false
+          copy_tags_to_snapshot: true
+          auto_minor_version_upgrade: true
+          enable_delete_protection: true
+          tags:
+            Environment: "<env>"
+
+    # ec2_instances:
+    # - name: Logical EC2 instance identifier.
+    # - subnet/iam_role/security_groups: Network and IAM references.
+    # - ami/architecture/instance_type: Image and instance sizing details.
+    # - connection_type: Intended access model (public/private).
+    # - storage.root/storage.app: Root and additional EBS volume settings.
+    # - termination_protection: Prevents accidental termination.
+    # - credit_specification.cpu_credits: Burstable CPU credit mode.
+    - ec2_instances:
+        - name: "<ec2-name>"
+          subnet: "<subnet-name>"
+          iam_role: "<iam-role-name>"
+          security_groups:
+            - "<security-group-name>"
+          ami: "<ami-id>"
+          architecture: "x86_64"
+          instance_type: "t3.small"
+          connection_type: "private"
+          key_name: "<optional-keypair-name>"
+          private_ip: "<optional-private-ip>"
+          associate_public_ip_address: false
+          monitoring: true
+          ebs_optimized: false
+          user_data: "<optional-user-data-script>"
+          storage:
+            root:
+              volume_type: "gp3"
+              volume_size: 30
+              encrypted: true
+              delete_on_termination: true
+            app:
+              volume_type: "gp3"
+              volume_size: 20
+              encrypted: true
+              delete_on_termination: true
+          termination_protection: true
+          source_dest_check: true
+          metadata_options:
+            http_tokens: "required" # optional | required
+            http_endpoint: "enabled" # enabled | disabled
+            instance_metadata_tags: "enabled" # enabled | disabled
+          credit_specification:
+            cpu_credits: "unlimited"
+          tags:
+            Environment: "<env>"
+
+    # ec2_launch_templates:
+    # - name: Logical launch template identifier.
+    # - template_name: Optional AWS launch template name override (defaults to name).
+    # - image_id/instance_type/key_name: Optional EC2 launch defaults used by consumers.
+    # - vpc_security_groups: Security groups by logical name or ID.
+    # - block_device_mappings[]: Optional EBS mapping defaults (encryption/size/type).
+    # - update_default_version: Automatically promote each new version as default.
+    - ec2_launch_templates:
+        - name: "<launch-template-name>"
+          template_name: "<optional-aws-launch-template-name>"
+          description: "<optional-launch-template-description>"
+          image_id: "<optional-ami-id>"
+          instance_type: "m6i.large"
+          key_name: "<optional-keypair-name>"
+          update_default_version: true
+          ebs_optimized: true
+          monitoring: true
+          vpc_security_groups:
+            - "<security-group-name>"
+          metadata_options:
+            http_tokens: "required" # optional | required
+            http_endpoint: "enabled" # enabled | disabled
+            instance_metadata_tags: "enabled" # enabled | disabled
+          block_device_mappings:
+            - device_name: "/dev/xvda"
+              ebs:
+                volume_type: "gp3"
+                volume_size: 100
+                encrypted: true
+                delete_on_termination: true
+          tags:
+            Environment: "<env>"
+          tag_specifications:
+            instance:
+              Environment: "<env>"
+            volume:
+              Environment: "<env>"
+
+    # ec2_load_balancers:
+    # - name: Logical ALB/NLB identifier.
+    # - vpc/subnets/security_groups: Network placement and security references.
+    # - scheme/ip_address_type: Exposure model and IP family.
+    # - listeners[]: Listener protocol/port and referenced target groups.
+    - ec2_load_balancers:
+        - name: "<alb-name>"
+          vpc: "<vpc-name>"
+          type: "application" # application | network
+          subnets:
+            - availability_zone: "<region>a"
+              subnet: "<subnet-name>"
+          security_groups:
+            - "<security-group-name>"
+          scheme: "internet-facing" # internet-facing | internal
+          ip_address_type: "ipv4"
+          enable_deletion_protection: true
+          idle_timeout: 60
+          drop_invalid_header_fields: true
+          access_logs:
+            enabled: false
+            bucket: "<access-log-bucket-name>"
+            prefix: "alb/"
+          listeners:
+            - protocol: "HTTP"
+              port: 80
+              target_groups:
+                - "<target-group-name>"
+          tags:
+            Environment: "<env>"
+
+    # ec2_alb_target_groups:
+    # - name: Logical target group identifier.
+    # - type/vpc/protocol/port: Target model and traffic settings.
+    # - health_check.*: Health probe behavior for target registration.
+    - ec2_alb_target_groups:
+        - name: "<target-group-name>"
+          type: "instance"
+          vpc: "<vpc-name>"
+          protocol: "HTTP"
+          port: 80
+          deregistration_delay: 300
+          slow_start: 0
+          stickiness:
+            enabled: false
+            type: "lb_cookie"
+            cookie_duration: 86400
+          health_check:
+            protocol: "HTTP"
+            path: "/"
+            healthy_threshold: 5
+            unhealthy_threshold: 2
+            timeout_seconds: 5
+            interval_seconds: 30
+            success_codes: 200
+          tags:
+            Environment: "<env>"
+
+    # s3_buckets:
+    # - name/namespace: Bucket name and naming scope guidance.
+    # - object_ownership/bucket_versioning: Ownership and versioning behavior.
+    # - encryption.*: Default encryption mode and optional KMS key ARN.
+    # - bucket_key_management.enabled: Enables S3 Bucket Keys for KMS cost optimization.
+    # - public_access_block.*: Block public access safety controls.
+    # - lifecycle_rules[]: Transition/expiration lifecycle policy settings.
+    # - cors_rules[]: CORS permissions for browser access.
+    # - logging.*: Access log delivery settings.
+    - s3_buckets:
+        - name: "<bucket-name>"
+          namespace: "global"
+          object_ownership: "BucketOwnerEnforced" # BucketOwnerEnforced | BucketOwnerPreferred | ObjectWriter
+          bucket_versioning: "enabled" # enabled | suspended
+          force_destroy: false
+          acl: "private"
+          object_lock_enabled: false
+          encryption:
+            type: "s3-managed" # s3-managed | kms
+            kms_key_arn: "<optional-kms-key-arn>"
+          bucket_key_management:
+            enabled: true
+          public_access_block:
+            block_public_acls: true
+            ignore_public_acls: true
+            block_public_policy: true
+            restrict_public_buckets: true
+          lifecycle_rules:
+            - id: "<lifecycle-rule-id>"
+              enabled: true
+              prefix: ""
+              transitions:
+                - days: 30
+                  storage_class: "STANDARD_IA"
+              expiration_days: 365
+          cors_rules:
+            - allowed_methods:
+                - "GET"
+              allowed_origins:
+                - "https://<domain>"
+              allowed_headers:
+                - "*"
+              expose_headers:
+                - "ETag"
+              max_age_seconds: 3000
+          logging:
+            enabled: false
+            target_bucket: "<access-log-bucket-name>"
+            target_prefix: "s3-access-logs/"
+          tags:
+            Environment: "<env>"
+
+    # eks_clusters:
+    # - name/vpc/kubernetes_version: Cluster identity, network, and control plane version.
+    # - endpoint_access.*: Private/public API access and allowed CIDRs.
+    # - subnet_ids/security_groups: Subnet and SG references for control plane networking.
+    # - cluster_logging.*: Enabled control plane log types and retention.
+    # - encryption.*: Secrets encryption settings and KMS key ARN.
+    # - iam.*: Cluster IAM role identifiers and ARN.
+    # - tags: Resource tags propagated to EKS.
+    - eks_clusters:
+        - name: "<eks-cluster-name>"
+          vpc: "<vpc-name>"
+          kubernetes_version: "1.30"
+          authentication_mode: "API_AND_CONFIG_MAP" # API | API_AND_CONFIG_MAP | CONFIG_MAP
+          service_ipv4_cidr: "172.20.0.0/16"
+          ip_family: "ipv4" # ipv4 | ipv6
+          endpoint_access:
+            private: true
+            public: true
+            public_access_cidrs:
+              - "0.0.0.0/0"
+          subnet_ids:
+            - "<private-subnet-1>"
+            - "<private-subnet-2>"
+          security_groups:
+            - "<eks-cluster-sg-name>"
+          cluster_logging:
+            enabled_types:
+              - "api"
+              - "audit"
+              - "authenticator"
+              - "controllerManager"
+              - "scheduler"
+            log_retention_days: 30
+          encryption:
+            enabled: true
+            resources:
+              - "secrets"
+            kms_key_arn: "<kms-key-arn>"
+          iam:
+            cluster_role_name: "<eks-cluster-role-name>"
+            cluster_role_arn: "arn:aws:iam::<account-id>:role/<eks-cluster-role-name>"
+          tags:
+            Name: "<eks-cluster-name>"
+            Environment: "<env>"
+
+    # eks_node_groups:
+    # - name/cluster: Node group identity and parent EKS cluster reference.
+    # - subnet_ids: Subnets where worker nodes are provisioned.
+    # - iam_role_name/iam_role_arn: IAM role identity used by worker nodes.
+    # - ami_type/capacity_type/instance_types: Worker OS image, purchase model, and instance shapes.
+    # - scaling.*: Desired/min/max node counts.
+    # - disk_size/disk_encryption: Node root volume sizing and encryption.
+    # - launch_template.*: Optional EC2 launch template override.
+    # - labels/taints: Kubernetes scheduling metadata.
+    # - update_config.*: Rolling update disruption limits.
+    # - remote_access.*: SSH access settings for nodes.
+    # - tags: Resource tags for node group.
+    - eks_node_groups:
+        - name: "<eks-nodegroup-name>"
+          cluster: "<eks-cluster-name>"
+          subnet_ids:
+            - "<private-subnet-1>"
+            - "<private-subnet-2>"
+          iam_role_name: "<eks-nodegroup-role-name>"
+          iam_role_arn: "arn:aws:iam::<account-id>:role/<eks-nodegroup-role-name>"
+          ami_type: "AL2_x86_64" # AL2_x86_64 | AL2_ARM_64 | BOTTLEROCKET_x86_64 | BOTTLEROCKET_ARM_64
+          capacity_type: "ON_DEMAND" # ON_DEMAND | SPOT
+          instance_types:
+            - "t3.large"
+          scaling:
+            desired_size: 2
+            min_size: 1
+            max_size: 4
+          disk_size: 50
+          disk_encryption: true
+          launch_template:
+            name: "<optional-launch-template-name>"
+            version: "<optional-launch-template-version>"
+          release_version: "<optional-eks-ami-release-version>"
+          force_update_version: false
+          labels:
+            workload: "general"
+          taints:
+            - key: "dedicated"
+              value: "batch"
+              effect: "NO_SCHEDULE"
+          update_config:
+            max_unavailable: 1
+            max_unavailable_percentage: 25
+          remote_access:
+            enabled: false
+            ec2_ssh_key: "<optional-keypair-name>"
+            source_security_groups:
+              - "<bastion-sg-name>"
+          tags:
+            Name: "<eks-nodegroup-name>"
+            Environment: "<env>"
+
+    # eks_fargate_profiles:
+    # - name/cluster: Fargate profile identity and parent cluster.
+    # - subnet_ids: Subnets used for Fargate pod networking.
+    # - pod_execution_role_name: IAM role used by Fargate runtime.
+    # - selectors[]: Namespace/label selectors determining which pods run on Fargate.
+    # - tags: Resource tags for the profile.
+    - eks_fargate_profiles:
+        - name: "<eks-fargate-profile-name>"
+          cluster: "<eks-cluster-name>"
+          subnet_ids:
+            - "<private-subnet-1>"
+            - "<private-subnet-2>"
+          pod_execution_role_name: "<eks-fargate-pod-execution-role-name>"
+          selectors:
+            - namespace: "kube-system"
+              labels:
+                k8s-app: "kube-dns"
+            - namespace: "apps"
+              labels:
+                run_on: "fargate"
+          tags:
+            Name: "<eks-fargate-profile-name>"
+            Environment: "<env>"
+
+    # eks_addons:
+    # - name: Managed EKS addon name.
+    # - cluster: Parent EKS cluster logical name.
+    # - version: Addon version (or latest).
+    # - resolve_conflicts_on_create/update: Conflict handling policy.
+    # - service_account_role_arn: Optional IRSA role ARN for addon.
+    # - configuration_values: Addon-specific JSON configuration string.
+    #   Supports runtime interpolation via templatestring() with maps:
+    #   ${subnet["<name>"]}, ${security_group["<name>"]}, ${vpc["<name>"]},
+    #   ${route_table["<name>"]}, ${nat_gateway["<name>"]}, ${internet_gateway["<name>"]}
+    - eks_addons:
+        - name: "vpc-cni" # vpc-cni | coredns | kube-proxy | aws-ebs-csi-driver | eks-pod-identity-agent
+          cluster: "<eks-cluster-name>"
+          version: "latest" # latest or exact version like v1.18.0-eksbuild.1
+          resolve_conflicts_on_create: "OVERWRITE" # NONE | OVERWRITE
+          resolve_conflicts_on_update: "PRESERVE" # NONE | OVERWRITE | PRESERVE
+          service_account_role_arn: "<optional-irsa-role-arn>"
+          preserve: true
+          configuration_values: "{}" # JSON string
+
+    # eks_helm_releases:
+    # - name/cluster: Helm release name and target EKS cluster.
+    # - repository/chart/version: Helm chart source and optional fixed version.
+    # - namespace/create_namespace: Namespace target and namespace auto-create behavior.
+    # - values: Optional YAML values string (templatestring-enabled).
+    # - set[]/set_sensitive[]: Helm --set values (templatestring-enabled).
+    # - templatestring context maps:
+    #   ${cluster_name}, ${region}, ${namespace}, ${release_name},
+    #   ${subnet["<name>"]}, ${security_group["<name>"]}, ${vpc["<name>"]},
+    #   ${route_table["<name>"]}, ${nat_gateway["<name>"]}, ${internet_gateway["<name>"]},
+    #   ${iam_role["<name>"]} (includes eks_irsa_roles as well)
+    - eks_helm_releases:
+        - name: "aws-load-balancer-controller"
+          cluster: "<eks-cluster-name>"
+          repository: "https://aws.github.io/eks-charts"
+          chart: "aws-load-balancer-controller"
+          version: "<optional-chart-version>"
+          namespace: "kube-system"
+          create_namespace: false
+          wait: true
+          timeout: 600
+          set:
+            - name: "clusterName"
+              value: "${cluster_name}"
+            - name: "region"
+              value: "${region}"
+            - name: "serviceAccount.create"
+              value: "true"
+            - name: "serviceAccount.name"
+              value: "aws-load-balancer-controller"
+            - name: "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+              value: "${iam_role[\"<irsa-role-name>\"]}"
+
+        - name: "cluster-autoscaler"
+          cluster: "<eks-cluster-name>"
+          repository: "https://kubernetes.github.io/autoscaler"
+          chart: "cluster-autoscaler"
+          version: "<optional-chart-version>"
+          namespace: "kube-system"
+          create_namespace: false
+          wait: true
+          timeout: 600
+          set:
+            - name: "autoDiscovery.clusterName"
+              value: "${cluster_name}"
+            - name: "awsRegion"
+              value: "${region}"
+            - name: "rbac.serviceAccount.create"
+              value: "true"
+            - name: "rbac.serviceAccount.name"
+              value: "cluster-autoscaler"
+            - name: "rbac.serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+              value: "${iam_role[\"<irsa-role-name>\"]}"
+
+    # k8s_storage_classes:
+    # - name/cluster: StorageClass name and target EKS cluster.
+    # - provisioner: CSI provisioner (for EKS default EBS CSI: ebs.csi.aws.com).
+    # - reclaim_policy/volume_binding_mode/allow_volume_expansion: Storage lifecycle options.
+    # - parameters: Provisioner parameters.
+    # - mount_options: Optional mount options.
+    # - allowed_topologies: Optional topology constraints.
+    - k8s_storage_classes:
+        - name: "gp3"
+          cluster: "<eks-cluster-name>"
+          provisioner: "ebs.csi.aws.com"
+          reclaim_policy: "Delete" # Delete | Retain
+          volume_binding_mode: "WaitForFirstConsumer" # Immediate | WaitForFirstConsumer
+          allow_volume_expansion: true
+          parameters:
+            type: "gp3"
+            fsType: "ext4"
+          mount_options:
+            - "discard"
+          annotations:
+            storageclass.kubernetes.io/is-default-class: "true"
+          labels:
+            app.kubernetes.io/managed-by: "terraform"
+          allowed_topologies:
+            - match_label_expressions:
+                - key: "topology.ebs.csi.aws.com/zone"
+                  values:
+                    - "<region>a"
+                    - "<region>c"
+
+    # eks_irsa_roles:
+    # - name/cluster: IRSA role identity and cluster reference.
+    # - oidc_provider_issuer_url: Optional OIDC issuer URL. If omitted, derived from cluster.
+    # - namespace/service_account_name: Kubernetes service account binding target.
+    # - managed_policies: Managed policy ARNs attached to IRSA role.
+    # - inline_policies[]: Inline policy documents (JSON) attached to the role.
+    - eks_irsa_roles:
+        - name: "<irsa-role-name>"
+          cluster: "<eks-cluster-name>"
+          oidc_provider_issuer_url: "https://oidc.eks.<region>.amazonaws.com/id/<oidc-id>"
+          namespace: "kube-system"
+          service_account_name: "aws-load-balancer-controller"
+          managed_policies:
+            - "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+          inline_policies:
+            - name: "<inline-policy-name>"
+              document_json: "{}" # JSON string policy document
+
+    # eks_access_entries:
+    # - cluster: Target EKS cluster logical name.
+    # - principal_arn: IAM principal granted Kubernetes access.
+    # - kubernetes_groups: Kubernetes RBAC groups mapped to principal.
+    # - type: Access entry principal type.
+    # - policy_associations[]: Cluster access policies and scope.
+    - eks_access_entries:
+        - cluster: "<eks-cluster-name>"
+          principal_arn: "arn:aws:iam::<account-id>:role/<role-name>"
+          kubernetes_groups:
+            - "system:masters"
+          type: "STANDARD" # STANDARD | EC2_LINUX | EC2_WINDOWS | FARGATE_LINUX
+          policy_associations:
+            - policy_arn: "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+              access_scope:
+                type: "cluster" # cluster | namespace
+                namespaces:
+                  - "default"
+
+    # eks_pod_identity_associations:
+    # - cluster/namespace/service_account_name: Kubernetes identity target.
+    # - role_arn: IAM role ARN assumed by pods through EKS Pod Identity.
+    - eks_pod_identity_associations:
+        - cluster: "<eks-cluster-name>"
+          namespace: "default"
+          service_account_name: "<service-account-name>"
+          role_arn: "arn:aws:iam::<account-id>:role/<pod-identity-role-name>"
+
+    # waf_web_acls:
+    # - name/scope/default_action: WAF ACL identity, scope, and default allow/block behavior.
+    # - visibility_config.*: CloudWatch metrics and sampled request settings.
+    # - managed_rule_groups[]: AWS managed rules with order and override action.
+    # - rate_based_rules[]: Rate limiting rules, thresholds, and actions.
+    - waf_web_acls:
+        - name: "<waf-web-acl-name>"
+          scope: "CLOUDFRONT" # CLOUDFRONT | REGIONAL
+          description: "<waf-web-acl-description>"
+          default_action: "allow" # allow | block
+          visibility_config:
+            cloudwatch_metrics_enabled: true
+            metric_name: "<waf-metric-name>"
+            sampled_requests_enabled: true
+          managed_rule_groups:
+            - name: "AWSManagedRulesCommonRuleSet"
+              vendor_name: "AWS"
+              priority: 1
+              override_action: "none" # none | count
+          rate_based_rules:
+            - name: "<rate-based-rule-name>"
+              priority: 100
+              limit: 2000
+              aggregate_key_type: "IP"
+              action: "block" # allow | block | count
+          tags:
+            Environment: "<env>"
+
+    # cloudfront_origin_access_controls:
+    # - name/description: OAC identity and description.
+    # - origin_type: Origin service type protected by OAC.
+    # - signing_behavior/signing_protocol: Request signing strategy and protocol.
+    - cloudfront_origin_access_controls:
+        - name: "<cloudfront-oac-name>"
+          description: "<oac-description>"
+          origin_type: "s3" # s3 | mediastore | lambda | mediapackagev2
+          signing_behavior: "always" # always | never | no-override
+          signing_protocol: "sigv4"
+
+    # cloudfront_distributions:
+    # - name/enabled/aliases/comment/price_class: Distribution identity and general behavior.
+    # - web_acl: Referenced WAF ACL logical name.
+    # - origins[]: Origin definitions (domain, type, path, OAC, custom origin settings).
+    # - default_cache_behavior.*: Primary caching, protocol, and policy settings.
+    # - custom_error_responses[]: Custom error mapping and caching behavior.
+    # - viewer_certificate.*: TLS certificate and minimum protocol settings.
+    # - logging.*: Access log destination and format options.
+    - cloudfront_distributions:
+        - name: "<cloudfront-distribution-name>"
+          enabled: true
+          is_ipv6_enabled: true
+          default_root_object: "index.html"
+          aliases:
+            - "cdn.<domain>"
+          comment: "<distribution-comment>"
+          price_class: "PriceClass_All" # PriceClass_100 | PriceClass_200 | PriceClass_All
+          http_version: "http2" # http1.1 | http2 | http2and3 | http3
+          wait_for_deployment: true
+          retain_on_delete: false
+          web_acl: "<waf-web-acl-name>"
+          origins:
+            - id: "<origin-id>"
+              domain_name: "<origin-domain-name>"
+              type: "s3" # s3 | custom
+              origin_path: ""
+              origin_access_control: "<cloudfront-oac-name>"
+              custom_origin_config:
+                http_port: 80
+                https_port: 443
+                origin_protocol_policy: "https-only" # http-only | match-viewer | https-only
+                origin_ssl_protocols:
+                  - "TLSv1.2"
+          default_cache_behavior:
+            target_origin_id: "<origin-id>"
+            viewer_protocol_policy: "redirect-to-https" # allow-all | https-only | redirect-to-https
+            allowed_methods:
+              - "GET"
+              - "HEAD"
+              - "OPTIONS"
+            cached_methods:
+              - "GET"
+              - "HEAD"
+            cache_policy_id: "<cache-policy-id>"
+            origin_request_policy_id: "<origin-request-policy-id>"
+            response_headers_policy_id: "<response-headers-policy-id>"
+            compress: true
+          custom_error_responses:
+            - error_code: 404
+              response_code: 404
+              response_page_path: "/404.html"
+              error_caching_min_ttl: 60
+          restrictions:
+            geo_restriction:
+              restriction_type: "none" # none | whitelist | blacklist
+              locations: []
+          viewer_certificate:
+            acm_certificate_arn: "arn:aws:acm:us-east-1:<account-id>:certificate/<certificate-id>"
+            ssl_support_method: "sni-only"
+            minimum_protocol_version: "TLSv1.2_2021"
+          logging:
+            enabled: false
+            bucket: "<cloudfront-log-bucket>.s3.amazonaws.com"
+            prefix: "cloudfront/"
+            include_cookies: false
+          tags:
+            Environment: "<env>"
+
+    # ecs_clusters:
+    # - name: ECS cluster name.
+    # - container_insights: Enables CloudWatch Container Insights.
+    # - execute_command_configuration.*: ECS Exec and logging/KMS settings.
+    # - capacity_providers: Capacity providers allowed in the cluster.
+    # - default_capacity_provider_strategy[]: Default provider weights.
+    - ecs_clusters:
+        - name: "<ecs-cluster-name>"
+          container_insights: true
+          execute_command_configuration:
+            enabled: true
+            kms_key_id: "<optional-kms-key-id>"
+            logging: "DEFAULT" # NONE | DEFAULT | OVERRIDE
+            log_group_name: "/ecs/<ecs-cluster-name>"
+          capacity_providers:
+            - "FARGATE"
+            - "FARGATE_SPOT"
+          default_capacity_provider_strategy:
+            - capacity_provider: "FARGATE"
+              weight: 1
+          tags:
+            Environment: "<env>"
+
+    # ecs_task_definitions:
+    # - family/cpu/memory/network_mode/requires_compatibilities: Core task runtime sizing and launch mode.
+    # - execution_role_arn/task_role_arn: IAM roles for agent operations and app permissions.
+    # - runtime_platform.*: CPU architecture and OS family.
+    # - ephemeral_storage.size_in_gib: Temporary storage allocated to the task.
+    # - container_definitions[]: Container image, ports, env vars, secrets, and log driver settings.
+    - ecs_task_definitions:
+        - family: "<ecs-task-family>"
+          requires_family_revision: true
+          cpu: "512"
+          memory: "1024"
+          network_mode: "awsvpc"
+          requires_compatibilities:
+            - "FARGATE"
+          execution_role_arn: "arn:aws:iam::<account-id>:role/<ecs-task-execution-role>"
+          task_role_arn: "arn:aws:iam::<account-id>:role/<ecs-task-role>"
+          runtime_platform:
+            cpu_architecture: "X86_64" # X86_64 | ARM64
+            operating_system_family: "LINUX"
+          ephemeral_storage:
+            size_in_gib: 21
+          volumes:
+            - name: "<volume-name>"
+              host_path: "<optional-host-path>"
+          container_definitions:
+            - name: "<container-name>"
+              image: "<account-id>.dkr.ecr.<region>.amazonaws.com/<repository>:<tag>"
+              essential: true
+              port_mappings:
+                - container_port: 8080
+                  protocol: "tcp"
+              environment:
+                - name: "ENV"
+                  value: "<env>"
+              secrets:
+                - name: "DB_PASSWORD"
+                  value_from: "arn:aws:secretsmanager:<region>:<account-id>:secret:<secret-name>"
+              log_configuration:
+                log_driver: "awslogs"
+                options:
+                  awslogs-group: "/ecs/<service-name>"
+                  awslogs-region: "<region>"
+                  awslogs-stream-prefix: "ecs"
+          tags:
+            Environment: "<env>"
+
+    # ecs_services:
+    # - name/cluster/task_definition_family: ECS service identity and deployment source.
+    # - launch_type/desired_count/enable_execute_command/deployment_controller: Service runtime and deployment model.
+    # - network_configuration.*: Subnets, SGs, and public IP assignment.
+    # - load_balancer.*: Target group and container traffic mapping.
+    # - deployment.*: Deployment safety thresholds and rollback behavior.
+    # - service_discovery.*: Cloud Map registration settings.
+    # - autoscaling.*: Target tracking autoscaling configuration.
+    - ecs_services:
+        - name: "<ecs-service-name>"
+          cluster: "<ecs-cluster-name>"
+          task_definition_family: "<ecs-task-family>"
+          launch_type: "FARGATE" # FARGATE | EC2
+          platform_version: "LATEST"
+          desired_count: 2
+          enable_execute_command: true
+          health_check_grace_period_seconds: 60
+          force_new_deployment: false
+          deployment_controller: "ECS" # ECS | CODE_DEPLOY | EXTERNAL
+          network_configuration:
+            subnets:
+              - "<private-subnet-1>"
+              - "<private-subnet-2>"
+            security_groups:
+              - "<security-group-name>"
+            assign_public_ip: false
+          load_balancer:
+            target_group_arn: "arn:aws:elasticloadbalancing:<region>:<account-id>:targetgroup/<target-group-name>/<target-group-id>"
+            container_name: "<container-name>"
+            container_port: 8080
+          deployment:
+            minimum_healthy_percent: 50
+            maximum_percent: 200
+            circuit_breaker:
+              enable: true
+              rollback: true
+          service_discovery:
+            enabled: false
+            namespace_id: "<cloud-map-namespace-id>"
+            service_name: "<cloud-map-service-name>"
+          autoscaling:
+            enabled: true
+            min_capacity: 2
+            max_capacity: 10
+            cpu_target: 60
+            memory_target: 70
+          tags:
+            Environment: "<env>"
+
+    # cloudwatch_log_groups:
+    # - name: CloudWatch Logs group name.
+    # - retention_in_days: Log retention period in days.
+    # - kms_key_id: Optional KMS key for log encryption.
+    # - tags: Resource tags.
+    - cloudwatch_log_groups:
+        - name: "/aws/eks/<eks-cluster-name>/cluster"
+          retention_in_days: 30
+          kms_key_id: "<optional-kms-key-id>"
+          log_group_class: "STANDARD" # STANDARD | INFREQUENT_ACCESS
+          skip_destroy: false
+          tags:
+            Environment: "<env>"
+
+    # cloudwatch_metric_alarms:
+    # - name/alarm_description: Alarm identity and operational description.
+    # - namespace/metric_name/statistic/period: Metric source and aggregation behavior.
+    # - evaluation_periods/datapoints_to_alarm/threshold/comparison_operator: Alarm threshold logic.
+    # - treat_missing_data: Missing data handling strategy.
+    # - dimensions: Metric dimensions to scope the alarm.
+    # - alarm_actions/ok_actions: SNS or other ARNs triggered on state changes.
+    - cloudwatch_metric_alarms:
+        - name: "<alarm-name>"
+          alarm_description: "<alarm-description>"
+          namespace: "AWS/EC2"
+          metric_name: "CPUUtilization"
+          statistic: "Average"
+          period: 300
+          evaluation_periods: 2
+          datapoints_to_alarm: 2
+          threshold: 80
+          comparison_operator: "GreaterThanOrEqualToThreshold"
+          treat_missing_data: "notBreaching"
+          unit: "Percent"
+          dimensions:
+            InstanceId: "<instance-id>"
+          alarm_actions:
+            - "arn:aws:sns:<region>:<account-id>:<sns-topic-name>"
+          ok_actions:
+            - "arn:aws:sns:<region>:<account-id>:<sns-topic-name>"
+          insufficient_data_actions:
+            - "arn:aws:sns:<region>:<account-id>:<sns-topic-name>"
+
+    # cloudwatch_dashboards:
+    # - name: Dashboard name.
+    # - widgets[]: Dashboard widgets with coordinates and metric properties.
+    # - widgets[].properties.metrics: Metric definitions rendered in the widget.
+    - cloudwatch_dashboards:
+        - name: "<dashboard-name>"
+          widgets:
+            - type: "metric"
+              x: 0
+              y: 0
+              width: 12
+              height: 6
+              properties:
+                title: "EC2 CPU Utilization"
+                region: "<region>"
+                metrics:
+                  - - "AWS/EC2"
+                    - "CPUUtilization"
+                    - "InstanceId"
+                    - "<instance-id>"
+                stat: "Average"
+                period: 300
+
+    # kms_keys:
+    # - alias/description: KMS key alias and description.
+    # - enable_key_rotation: Automatic annual key rotation toggle.
+    # - deletion_window_in_days: Pending deletion window for scheduled key deletion.
+    # - key_usage/multi_region: Key usage mode and multi-region behavior.
+    # - policy: KMS key policy JSON document.
+    # - tags: Resource tags.
+    - kms_keys:
+        - alias: "alias/<kms-key-alias>"
+          description: "<kms-key-description>"
+          enabled: true
+          enable_key_rotation: true
+          deletion_window_in_days: 30
+          key_usage: "ENCRYPT_DECRYPT"
+          key_spec: "SYMMETRIC_DEFAULT" # SYMMETRIC_DEFAULT | HMAC_256 | HMAC_384 | HMAC_512
+          multi_region: false
+          policy: "{}" # JSON string key policy document
+          tags:
+            Environment: "<env>"
+
+    # secrets_manager_secrets:
+    # - name/description: Secret identity and description.
+    # - kms_key_id: KMS key identifier used to encrypt secret values.
+    # - recovery_window_in_days: Days before permanent deletion on destroy.
+    # - secret_string: JSON secret payload.
+    # - replica_regions: Regions used for secret replication.
+    # - tags: Resource tags.
+    - secrets_manager_secrets:
+        - name: "<secret-name>"
+          description: "<secret-description>"
+          kms_key_id: "alias/<kms-key-alias>"
+          recovery_window_in_days: 30
+          secret_string: "{\"username\":\"<value>\",\"password\":\"<value>\"}" # JSON string
+          rotation_enabled: false
+          rotation_lambda_arn: "arn:aws:lambda:<region>:<account-id>:function:<secret-rotation-function>"
+          rotation_rules:
+            automatically_after_days: 30
+          replica_regions:
+            - "<region-2>"
+          tags:
+            Environment: "<env>"
+
+    # ecr_repositories:
+    # - name: ECR repository name.
+    # - image_tag_mutability: Controls whether existing tags can be overwritten.
+    # - scan_on_push: Enables vulnerability scan when pushing images.
+    # - encryption_configuration.*: ECR encryption mode and optional KMS key.
+    # - lifecycle_policy: JSON lifecycle policy for image cleanup.
+    # - force_delete: Deletes repository even if images exist.
+    # - tags: Resource tags.
+    - ecr_repositories:
+        - name: "<ecr-repository-name>"
+          image_tag_mutability: "IMMUTABLE" # MUTABLE | IMMUTABLE
+          scan_on_push: true
+          encryption_configuration:
+            encryption_type: "KMS" # AES256 | KMS
+            kms_key: "alias/<kms-key-alias>"
+          repository_policy: "{}" # JSON string repository policy document
+          lifecycle_policy: "{}" # JSON string lifecycle policy document
+          force_delete: false
+          tags:
+            Environment: "<env>"
+
+    # lambda_functions:
+    # - name/runtime/handler/architectures: Lambda identity and runtime entrypoint.
+    # - package_type/filename/image_uri: Deployment artifact type and source.
+    # - timeout/memory_size/ephemeral_storage_mb: Runtime resource sizing.
+    # - reserved_concurrent_executions: Concurrency limit (-1 means unreserved).
+    # - role_arn: Lambda execution role ARN.
+    # - vpc_config.*: Subnets and security groups for VPC-enabled Lambda.
+    # - environment_variables: Function environment variable map.
+    # - dead_letter_target_arn: DLQ target ARN for async invocation failures.
+    # - tracing_mode/log_retention_days: X-Ray tracing mode and log retention.
+    # - tags: Resource tags.
+    - lambda_functions:
+        - name: "<lambda-function-name>"
+          runtime: "python3.12"
+          handler: "app.lambda_handler"
+          architectures:
+            - "x86_64" # x86_64 | arm64
+          package_type: "Zip" # Zip | Image
+          filename: "<artifact-file-path>"
+          image_uri: "<account-id>.dkr.ecr.<region>.amazonaws.com/<repository>:<tag>"
+          source_code_hash: "<optional-artifact-sha256>"
+          publish: false
+          timeout: 30
+          memory_size: 512
+          ephemeral_storage_mb: 512
+          reserved_concurrent_executions: -1
+          role_arn: "arn:aws:iam::<account-id>:role/<lambda-execution-role>"
+          layers:
+            - "arn:aws:lambda:<region>:<account-id>:layer:<layer-name>:<version>"
+          kms_key_arn: "arn:aws:kms:<region>:<account-id>:key/<kms-key-id>"
+          vpc_config:
+            subnet_ids:
+              - "<private-subnet-1>"
+              - "<private-subnet-2>"
+            security_group_ids:
+              - "<security-group-name>"
+          file_system_config:
+            arn: "arn:aws:elasticfilesystem:<region>:<account-id>:access-point/<access-point-id>"
+            local_mount_path: "/mnt/efs"
+          environment_variables:
+            ENV: "<env>"
+          dead_letter_target_arn: "arn:aws:sqs:<region>:<account-id>:<dlq-name>"
+          tracing_mode: "Active" # Active | PassThrough
+          log_retention_days: 30
+          tags:
+            Environment: "<env>"
+
+    # api_gateway_http_apis:
+    # - name/protocol_type/description: HTTP API identity and type.
+    # - cors_configuration.*: Browser CORS behavior for API requests.
+    # - default_stage_auto_deploy: Auto-deploy toggle for the default stage.
+    # - tags: Resource tags.
+    - api_gateway_http_apis:
+        - name: "<http-api-name>"
+          protocol_type: "HTTP"
+          description: "<api-description>"
+          disable_execute_api_endpoint: false
+          route_selection_expression: "$request.method $request.path"
+          cors_configuration:
+            allow_credentials: false
+            allow_headers:
+              - "content-type"
+              - "authorization"
+            allow_methods:
+              - "GET"
+              - "POST"
+            allow_origins:
+              - "https://<domain>"
+            expose_headers:
+              - "x-request-id"
+            max_age: 300
+          default_stage_auto_deploy: true
+          default_stage_access_log_settings:
+            destination_arn: "arn:aws:logs:<region>:<account-id>:log-group:<log-group-name>"
+            format: "{\"requestId\":\"$context.requestId\",\"ip\":\"$context.identity.sourceIp\",\"status\":\"$context.status\"}"
+          tags:
+            Environment: "<env>"
+
+    # api_gateway_http_integrations:
+    # - name/api: Integration identity and parent API reference.
+    # - integration_type/integration_uri/integration_method: Backend connection type and target.
+    # - payload_format_version: Request/response payload version.
+    # - timeout_milliseconds: Backend invocation timeout.
+    - api_gateway_http_integrations:
+        - name: "<http-api-integration-name>"
+          api: "<http-api-name>"
+          integration_type: "AWS_PROXY" # AWS_PROXY | HTTP_PROXY
+          integration_uri: "arn:aws:lambda:<region>:<account-id>:function:<lambda-function-name>"
+          integration_method: "POST"
+          connection_type: "INTERNET" # INTERNET | VPC_LINK
+          connection_id: "<optional-vpc-link-id>"
+          credentials_arn: "arn:aws:iam::<account-id>:role/<apigw-integration-role>"
+          payload_format_version: "2.0"
+          timeout_milliseconds: 30000
+
+    # api_gateway_http_routes:
+    # - api: Parent API logical name.
+    # - route_key: Method/path route expression.
+    # - target_integration: Referenced integration logical name.
+    # - authorization_type/authorizer_id: Route authorization model and optional authorizer.
+    - api_gateway_http_routes:
+        - api: "<http-api-name>"
+          route_key: "ANY /{proxy+}"
+          target_integration: "<http-api-integration-name>"
+          authorization_type: "NONE" # NONE | JWT | AWS_IAM | CUSTOM
+          authorizer_id: "<optional-authorizer-id>"
+          operation_name: "<route-operation-name>"
+
+    # route53_hosted_zones:
+    # - name/comment: Hosted zone domain name and description.
+    # - private_zone: Private/public hosted zone mode.
+    # - vpc_associations[]: VPC associations for private hosted zones.
+    # - tags: Resource tags.
+    - route53_hosted_zones:
+        - name: "<domain>"
+          comment: "<hosted-zone-comment>"
+          private_zone: false
+          force_destroy: false
+          vpc_associations:
+            - vpc: "<vpc-name>"
+              region: "<region>"
+          tags:
+            Environment: "<env>"
+
+    # route53_records:
+    # - zone/name/type/ttl/records: DNS record placement, type, TTL, and literal values.
+    # - alias.*: Alias target settings (used instead of records/ttl for alias records).
+    # - routing_policy.*: Advanced routing mode configuration.
+    - route53_records:
+        - zone: "<domain>"
+          name: "api.<domain>"
+          type: "A"
+          ttl: 300
+          records:
+            - "1.2.3.4"
+          alias:
+            enabled: true
+            name: "<alias-dns-name>"
+            zone_id: "<alias-zone-id>"
+            evaluate_target_health: false
+          routing_policy:
+            type: "simple" # simple | weighted | latency | failover
+            set_identifier: "<optional-set-identifier>"
+            weight: 100
+            region: "<region>"
+            failover: "PRIMARY" # PRIMARY | SECONDARY
+          health_check_id: "<optional-health-check-id>"
+          multivalue_answer_routing_policy: false
+
+    # acm_certificates:
+    # - domain_name/subject_alternative_names: Primary and SAN domains.
+    # - validation_method: Domain validation mechanism.
+    # - hosted_zone: Hosted zone used for DNS validation automation.
+    # - transparency_logging_enabled: Certificate transparency log preference.
+    # - tags: Resource tags.
+    - acm_certificates:
+        - domain_name: "<domain>"
+          subject_alternative_names:
+            - "*.<domain>"
+          validation_method: "DNS" # DNS | EMAIL
+          key_algorithm: "RSA_2048" # RSA_2048 | RSA_4096 | EC_prime256v1 | EC_secp384r1
+          hosted_zone: "<domain>"
+          transparency_logging_enabled: true
+          tags:
+            Environment: "<env>"
+
+    # dynamodb_tables:
+    # - name/billing_mode/hash_key/range_key: Table identity, billing model, and primary key schema.
+    # - attributes[]: Attribute type definitions used by primary and secondary indexes.
+    # - global_secondary_indexes[]: GSI definitions and capacity/projection settings.
+    # - ttl.*: TTL cleanup configuration.
+    # - point_in_time_recovery: PITR backup enablement.
+    # - stream_enabled/stream_view_type: DynamoDB stream configuration.
+    # - server_side_encryption.*: KMS encryption settings.
+    # - tags: Resource tags.
+    - dynamodb_tables:
+        - name: "<dynamodb-table-name>"
+          billing_mode: "PAY_PER_REQUEST" # PAY_PER_REQUEST | PROVISIONED
+          table_class: "STANDARD" # STANDARD | STANDARD_INFREQUENT_ACCESS
+          hash_key: "pk"
+          range_key: "sk"
+          attributes:
+            - name: "pk"
+              type: "S" # S | N | B
+            - name: "sk"
+              type: "S" # S | N | B
+          global_secondary_indexes:
+            - name: "gsi1"
+              hash_key: "gsi1_pk"
+              range_key: "gsi1_sk"
+              projection_type: "ALL" # ALL | KEYS_ONLY | INCLUDE
+              non_key_attributes:
+                - "attr1"
+              read_capacity: 5
+              write_capacity: 5
+          local_secondary_indexes:
+            - name: "lsi1"
+              range_key: "lsi1_sk"
+              projection_type: "ALL" # ALL | KEYS_ONLY | INCLUDE
+              non_key_attributes:
+                - "attr2"
+          ttl:
+            enabled: true
+            attribute_name: "ttl"
+          point_in_time_recovery: true
+          deletion_protection_enabled: true
+          stream_enabled: true
+          stream_view_type: "NEW_AND_OLD_IMAGES"
+          server_side_encryption:
+            enabled: true
+            kms_key_arn: "arn:aws:kms:<region>:<account-id>:key/<kms-key-id>"
+          tags:
+            Environment: "<env>"
+
+    # elasticache_replication_groups:
+    # - replication_group_id/description: ElastiCache replication group identity.
+    # - engine/engine_version/node_type/parameter_group_name/port: Redis engine and runtime profile.
+    # - subnet_group_name/security_group_ids: Network placement and firewall controls.
+    # - automatic_failover_enabled/multi_az_enabled/num_cache_clusters: Availability and topology settings.
+    # - at_rest_encryption_enabled/transit_encryption_enabled/auth_token: Security controls.
+    # - snapshot_retention_limit/maintenance_window: Backup retention and maintenance schedule.
+    # - tags: Resource tags.
+    - elasticache_replication_groups:
+        - replication_group_id: "<redis-replication-group-id>"
+          description: "<redis-description>"
+          engine: "redis"
+          engine_version: "7.1"
+          node_type: "cache.t4g.medium"
+          parameter_group_name: "default.redis7"
+          port: 6379
+          subnet_group_name: "<elasticache-subnet-group-name>"
+          security_group_ids:
+            - "<security-group-name>"
+          automatic_failover_enabled: true
+          multi_az_enabled: true
+          num_cache_clusters: 2
+          at_rest_encryption_enabled: true
+          transit_encryption_enabled: true
+          auth_token: "<optional-auth-token>"
+          apply_immediately: false
+          auto_minor_version_upgrade: true
+          snapshot_retention_limit: 7
+          snapshot_window: "03:00-04:00"
+          maintenance_window: "sun:18:00-sun:19:00"
+          tags:
+            Environment: "<env>"
+
+    # sqs_queues:
+    # - name/fifo_queue/content_based_deduplication: Queue type and deduplication behavior.
+    # - delay_seconds/message_retention_seconds/visibility_timeout_seconds: Delivery timing controls.
+    # - max_message_size/receive_wait_time_seconds: Message and long polling behavior.
+    # - kms_master_key_id/kms_data_key_reuse_period_seconds: Server-side encryption settings.
+    # - dead_letter_queue.*: DLQ linkage and redrive policy.
+    # - tags: Resource tags.
+    - sqs_queues:
+        - name: "<sqs-queue-name>"
+          fifo_queue: false
+          content_based_deduplication: false
+          deduplication_scope: "queue" # queue | messageGroup
+          fifo_throughput_limit: "perQueue" # perQueue | perMessageGroupId
+          delay_seconds: 0
+          message_retention_seconds: 345600
+          visibility_timeout_seconds: 30
+          max_message_size: 262144
+          receive_wait_time_seconds: 0
+          kms_master_key_id: "alias/<kms-key-alias>"
+          kms_data_key_reuse_period_seconds: 300
+          dead_letter_queue:
+            enabled: true
+            target_queue_name: "<sqs-dlq-name>"
+            max_receive_count: 5
+          redrive_allow_policy: "{}" # JSON string
+          tags:
+            Environment: "<env>"
+
+    # sns_topics:
+    # - name/fifo_topic/content_based_deduplication: SNS topic identity and FIFO settings.
+    # - kms_master_key_id: KMS key for topic encryption.
+    # - delivery_policy: JSON delivery/retry policy.
+    # - tags: Resource tags.
+    - sns_topics:
+        - name: "<sns-topic-name>"
+          fifo_topic: false
+          content_based_deduplication: false
+          kms_master_key_id: "alias/<kms-key-alias>"
+          policy: "{}" # JSON string topic policy document
+          delivery_policy: "{}" # JSON string
+          tags:
+            Environment: "<env>"
+
+    # sns_subscriptions:
+    # - topic/protocol/endpoint: SNS subscription source and destination.
+    # - raw_message_delivery: Whether payload is delivered without SNS envelope.
+    # - filter_policy/redrive_policy: JSON filters and failure redrive settings.
+    - sns_subscriptions:
+        - topic: "<sns-topic-name>"
+          protocol: "email" # email | sms | lambda | sqs | https
+          endpoint: "<subscription-endpoint>"
+          raw_message_delivery: false
+          confirmation_timeout_in_minutes: 1
+          endpoint_auto_confirms: false
+          filter_policy: "{}" # JSON string
+          redrive_policy: "{}" # JSON string
+
+    # eventbridge_buses:
+    # - name: Custom event bus name.
+    # - policy: JSON resource policy for cross-account/event permissions.
+    # - kms_key_identifier: KMS key for event bus encryption.
+    # - tags: Resource tags.
+    - eventbridge_buses:
+        - name: "<eventbridge-bus-name>"
+          description: "<eventbridge-bus-description>"
+          policy: "{}" # JSON string
+          kms_key_identifier: "alias/<kms-key-alias>"
+          tags:
+            Environment: "<env>"
+
+    # eventbridge_rules:
+    # - name/event_bus_name/description: Rule identity and target event bus.
+    # - schedule_expression/event_pattern/state: Trigger model (scheduled or pattern-based) and enablement.
+    # - targets[]: Target resources and per-target input/retry/DLQ settings.
+    - eventbridge_rules:
+        - name: "<eventbridge-rule-name>"
+          event_bus_name: "<eventbridge-bus-name>"
+          description: "<rule-description>"
+          schedule_expression: "rate(5 minutes)"
+          event_pattern: "{}" # JSON string
+          role_arn: "arn:aws:iam::<account-id>:role/<eventbridge-invoke-role>"
+          state: "ENABLED" # ENABLED | DISABLED
+          targets:
+            - id: "<target-id>"
+              arn: "arn:aws:lambda:<region>:<account-id>:function:<lambda-function-name>"
+              input: "{}" # JSON string
+              retry_policy:
+                maximum_event_age_in_seconds: 3600
+                maximum_retry_attempts: 2
+              dead_letter_config_arn: "arn:aws:sqs:<region>:<account-id>:<dlq-name>"
