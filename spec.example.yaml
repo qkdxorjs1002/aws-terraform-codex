@@ -228,7 +228,19 @@ project:
               source:
                 type: "ip"
                 value: "10.80.0.0/16"
+            - description: "Allow HTTPS from EKS pod SG"
+              protocol: "tcp"
+              port_range: 443
+              source:
+                type: "security-group"
+                value: "my-tst-tf-eks-pod-sg-ap1"
           outbound_rules:
+            - description: "Allow HTTPS to EKS cluster SG"
+              protocol: "tcp"
+              port_range: 443
+              destination:
+                type: "security-group"
+                value: "my-tst-tf-eks-cls-sg-ap1"
             - description: "Allow all outbound"
               protocol: "-1"
               port_range:

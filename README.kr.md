@@ -94,6 +94,8 @@ project:
 
 중요한 점은 참조가 이름 기반이라는 것입니다. 예를 들어 서브넷은 VPC의 실제 ID가 아니라 `vpc: "main-vpc"`처럼 논리 이름을 참조합니다. 루트 모듈이 이를 생성된 리소스 ID로 매핑합니다.
 
+`security_groups` 규칙에서 `source.type`/`destination.type`이 `security-group`인 경우, `value`에는 같은 스펙 내 논리 SG 이름 또는 실제 SG ID(`sg-...`)를 사용할 수 있습니다.
+
 EKS Pod Identity association의 `role_arn`은 리터럴 ARN뿐 아니라 role 이름(`iam_roles` 또는 `eks_irsa_roles`의 논리 이름)도 입력할 수 있습니다.
 
 EC2 Launch Template의 `image_id`는 AMI ID(`ami-*`)뿐 아니라 AMI 이름도 받을 수 있습니다. AMI 이름을 사용할 때는 `image_owners`(기본값: `["self"]`)와 `image_most_recent`(기본값: `true`)로 조회 동작을 제어할 수 있습니다.

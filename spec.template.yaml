@@ -131,6 +131,8 @@ project:
     # - vpc: Parent VPC logical name.
     # - inbound_rules[]: Inbound rules (description, protocol, port range, source).
     # - outbound_rules[]: Outbound rules (description, protocol, port range, destination).
+    # - source/destination.type "security-group" accepts a logical SG name from this spec
+    #   or a literal security group ID (sg-...).
     - security_groups:
         - name: "<security-group-name>"
           vpc: "<vpc-name>"
@@ -142,6 +144,12 @@ project:
               source:
                 type: "ip"
                 value: "0.0.0.0/0"
+            - description: "<from-security-group>"
+              protocol: "tcp"
+              port_range: 443
+              source:
+                type: "security-group"
+                value: "<security-group-name-or-id>"
           outbound_rules:
             - description: "<rule-description>"
               protocol: "tcp"
@@ -149,6 +157,12 @@ project:
               destination:
                 type: "ip"
                 value: "0.0.0.0/0"
+            - description: "<to-security-group>"
+              protocol: "tcp"
+              port_range: 443
+              destination:
+                type: "security-group"
+                value: "<security-group-name-or-id>"
           tags:
             Environment: "<env>"
 

@@ -61,5 +61,6 @@ prefix_rule(
     match = [
         "terraform validate",
         "terraform validate -json",
+        "TF_VAR_* terraform validate",
     ],
 )
