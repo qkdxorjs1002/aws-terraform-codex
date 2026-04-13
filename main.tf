@@ -425,5 +425,5 @@ module "eks_addons" {
   configuration_values     = try(each.value.configuration_values, null)
   preserve                 = try(each.value.preserve, false)
 
-  depends_on = [module.eks_clusters, module.eks_node_groups]
+  depends_on = [module.eks_clusters]
 }
