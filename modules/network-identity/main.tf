@@ -14,6 +14,18 @@ locals {
     endpoint.name => endpoint
   }
 
+  vpc_gateway_endpoints = {
+    for endpoint_name, endpoint in local.vpc_endpoints :
+    endpoint_name => endpoint
+    if lower(try(endpoint.endpoint_type, "Interface")) == "gateway"
+  }
+
+  vpc_non_gateway_endpoints = {
+    for endpoint_name, endpoint in local.vpc_endpoints :
+    endpoint_name => endpoint
+    if lower(try(endpoint.endpoint_type, "Interface")) != "gateway"
+  }
+
   vpc_flow_logs = {
     for flow_log in try(var.resources_by_type.vpc_flow_logs, []) :
     flow_log.name => flow_log
@@ -154,8 +166,8 @@ resource "aws_network_acl_association" "managed" {
   subnet_id      = each.value.subnet_id
 }
 
-resource "aws_vpc_endpoint" "managed" {
-  for_each = local.vpc_endpoints
+resource "aws_vpc_endpoint" "gateway" {
+  for_each = local.vpc_gateway_endpoints
 
   vpc_id              = lookup(var.vpc_ids_by_name, each.value.vpc, each.value.vpc)
   service_name        = each.value.service
@@ -185,6 +197,41 @@ resource "aws_vpc_endpoint" "managed" {
     },
     try(each.value.tags, {})
   )
+}
+
+resource "aws_vpc_endpoint" "managed" {
+  for_each = local.vpc_non_gateway_endpoints
+
+  vpc_id              = lookup(var.vpc_ids_by_name, each.value.vpc, each.value.vpc)
+  service_name        = each.value.service
+  vpc_endpoint_type   = try(each.value.endpoint_type, "Interface")
+  auto_accept         = try(each.value.auto_accept, false)
+  private_dns_enabled = try(each.value.private_dns_enabled, null)
+  policy              = try(each.value.policy, null)
+
+  subnet_ids = [
+    for subnet in try(each.value.subnets, []) :
+    lookup(var.subnet_ids_by_name, subnet, subnet)
+  ]
+
+  route_table_ids = [
+    for route_table in try(each.value.route_tables, []) :
+    lookup(var.route_table_ids_by_name, route_table, route_table)
+  ]
+
+  security_group_ids = [
+    for security_group in try(each.value.security_groups, []) :
+    lookup(var.security_group_ids_by_name, security_group, security_group)
+  ]
+
+  tags = merge(
+    {
+      Name = each.value.name
+    },
+    try(each.value.tags, {})
+  )
+
+  depends_on = [aws_vpc_endpoint.gateway]
 }
 
 resource "aws_flow_log" "managed" {

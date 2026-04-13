@@ -159,6 +159,7 @@ project:
     # - endpoint_type: Interface or Gateway endpoint type.
     # - private_dns_enabled: Enables private DNS for Interface endpoints.
     # - subnets/route_tables/security_groups: Attachment targets by logical names.
+    # - Creation order: Gateway endpoints are created before Interface endpoints.
     # - depends_on_vpc_endpoints: Endpoint dependencies for ordered creation.
     - vpc_endpoints:
         - name: "<vpc-endpoint-name>"
