@@ -26,6 +26,15 @@ project:
             Name: "my-tst-tf-eks-nd-iam-role"
             Environment: "tst"
 
+        - name: "my-tst-tf-external-dns-pod-identity-role"
+          description: "IAM role for EKS Pod Identity (external-dns)"
+          assume_role_policy: '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"pods.eks.amazonaws.com"},"Action":["sts:AssumeRole","sts:TagSession"]}]}'
+          policies:
+            - "arn:aws:iam::aws:policy/AmazonRoute53ReadOnlyAccess"
+          tags:
+            Name: "my-tst-tf-external-dns-pod-identity-role"
+            Environment: "tst"
+
     - ec2_launch_templates:
         - name: "my-tst-tf-eks-ap1-lt"
           version: "1"
@@ -564,3 +573,9 @@ project:
             storageclass.kubernetes.io/is-default-class: "true"
           labels:
             app.kubernetes.io/managed-by: "terraform"
+
+    - eks_pod_identity_associations:
+        - cluster: "my-tst-tf-eks-ap1"
+          namespace: "kube-system"
+          service_account_name: "external-dns"
+          role_arn: "arn:aws:iam::<account-id>:role/my-tst-tf-external-dns-pod-identity-role"
