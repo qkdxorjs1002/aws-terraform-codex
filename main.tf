@@ -70,6 +70,21 @@ locals {
     name => mod.id
   }
 
+  eks_cluster_arns_by_name = {
+    for name, mod in module.eks_clusters :
+    name => mod.arn
+  }
+
+  eks_node_group_arns_by_name = {
+    for name, mod in module.eks_node_groups :
+    name => mod.arn
+  }
+
+  eks_addon_arns_by_key = {
+    for name, mod in module.eks_addons :
+    name => mod.arn
+  }
+
   security_group_ids_by_name = {
     for name, mod in module.security_groups :
     name => mod.id

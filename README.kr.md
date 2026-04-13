@@ -96,6 +96,8 @@ project:
 
 EKS Pod Identity association의 `role_arn`은 리터럴 ARN뿐 아니라 role 이름(`iam_roles` 또는 `eks_irsa_roles`의 논리 이름)도 입력할 수 있습니다.
 
+EC2 Launch Template의 `image_id`는 AMI ID(`ami-*`)뿐 아니라 AMI 이름도 받을 수 있습니다. AMI 이름을 사용할 때는 `image_owners`(기본값: `["self"]`)와 `image_most_recent`(기본값: `true`)로 조회 동작을 제어할 수 있습니다.
+
 ### 4. 초기화 및 검증
 
 모듈과 provider를 초기화한 뒤 검증합니다.
@@ -249,6 +251,7 @@ EKS 확장 구성을 담당합니다.
 - Kubernetes Storage Classes
 - EKS Access Entries
 - Pod Identity Associations
+- 루트 오케스트레이션은 EKS cluster/node group/add-on 의존 신호를 `eks-extended`로 전달하며, 이를 통해 Helm/Kubernetes 작업은 클러스터 프로비저닝 선행조건 이후에 평가됩니다.
 
 ### `modules/edge-containers-observability`
 

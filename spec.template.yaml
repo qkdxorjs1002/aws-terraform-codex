@@ -326,6 +326,8 @@ project:
     # - name: Logical launch template identifier.
     # - template_name: Optional AWS launch template name override (defaults to name).
     # - image_id/instance_type/key_name: Optional EC2 launch defaults used by consumers.
+    #   image_id accepts either an AMI ID (ami-*) or an AMI name for lookup.
+    # - image_owners/image_most_recent: Optional AMI lookup controls when image_id is a name.
     # - vpc_security_groups: Security groups by logical name or ID.
     # - block_device_mappings[]: Optional EBS mapping defaults (encryption/size/type).
     # - update_default_version: Automatically promote each new version as default.
@@ -333,7 +335,10 @@ project:
         - name: "<launch-template-name>"
           template_name: "<optional-aws-launch-template-name>"
           description: "<optional-launch-template-description>"
-          image_id: "<optional-ami-id>"
+          image_id: "<optional-ami-id-or-ami-name>"
+          image_owners:
+            - "self"
+          image_most_recent: true
           instance_type: "m6i.large"
           key_name: "<optional-keypair-name>"
           update_default_version: true

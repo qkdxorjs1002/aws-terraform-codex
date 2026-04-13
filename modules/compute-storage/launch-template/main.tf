@@ -3,6 +3,37 @@ locals {
     for launch_template in try(var.resources_by_type.ec2_launch_templates, []) :
     launch_template.name => launch_template
   }
+
+  launch_template_image_inputs = {
+    for template_name, launch_template in local.ec2_launch_templates :
+    template_name => try(trimspace(launch_template.image_id), try(trimspace(launch_template.ami), ""))
+  }
+
+  launch_template_image_is_id = {
+    for template_name, image_input in local.launch_template_image_inputs :
+    template_name => length(regexall("^ami-[0-9a-fA-F]{8}([0-9a-fA-F]{9})?$", image_input)) > 0
+  }
+}
+
+data "aws_ami" "launch_template_image_by_name" {
+  for_each = {
+    for template_name, launch_template in local.ec2_launch_templates :
+    template_name => launch_template
+    if local.launch_template_image_inputs[template_name] != "" && !local.launch_template_image_is_id[template_name]
+  }
+
+  most_recent = try(each.value.image_most_recent, true)
+  owners      = try(each.value.image_owners, ["self"])
+
+  filter {
+    name   = "name"
+    values = [local.launch_template_image_inputs[each.key]]
+  }
+
+  filter {
+    name   = "state"
+    values = ["available"]
+  }
 }
 
 resource "aws_launch_template" "managed" {
@@ -11,7 +42,11 @@ resource "aws_launch_template" "managed" {
   name        = try(each.value.template_name, each.value.name)
   description = try(each.value.description, null)
 
-  image_id      = try(each.value.image_id, try(each.value.ami, null))
+  image_id = (
+    local.launch_template_image_inputs[each.key] == "" ? null :
+    local.launch_template_image_is_id[each.key] ? local.launch_template_image_inputs[each.key] :
+    data.aws_ami.launch_template_image_by_name[each.key].id
+  )
   instance_type = try(each.value.instance_type, null)
   key_name      = try(each.value.key_name, null)
 

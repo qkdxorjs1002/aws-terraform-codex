@@ -41,3 +41,18 @@ variable "iam_role_arns_by_name" {
   type    = map(string)
   default = {}
 }
+
+variable "eks_cluster_dependency_arns" {
+  type    = map(string)
+  default = {}
+}
+
+variable "eks_node_group_dependency_arns" {
+  type    = map(string)
+  default = {}
+}
+
+variable "eks_addon_dependency_arns" {
+  type    = map(string)
+  default = {}
+}

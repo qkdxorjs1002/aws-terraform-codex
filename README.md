@@ -94,6 +94,8 @@ References are name-based. For example, a subnet points to `vpc: "main-vpc"` ins
 
 For EKS Pod Identity associations, `role_arn` also accepts a role name (logical name from `iam_roles` or `eks_irsa_roles`) in addition to a literal ARN.
 
+For EC2 launch templates, `image_id` accepts either an AMI ID (`ami-*`) or an AMI name. If using an AMI name, you can set optional `image_owners` (default: `["self"]`) and `image_most_recent` (default: `true`) to control lookup behavior.
+
 ### 4. Initialize and Validate
 
 ```bash
@@ -245,6 +247,7 @@ Owns extended EKS functionality:
 - Kubernetes Storage Classes
 - EKS Access Entries
 - Pod Identity Associations
+- Root orchestration passes EKS cluster/node group/add-on dependency signals into `eks-extended`, so Helm/Kubernetes operations are evaluated after cluster provisioning prerequisites.
 
 ### `modules/edge-containers-observability`
 

@@ -45,6 +45,9 @@ module "eks_extended" {
   nat_gateway_ids_by_name    = local.nat_gateway_ids_by_name
   internet_gateway_ids_by_name = local.internet_gateway_ids_by_name
   iam_role_arns_by_name = module.network_identity.iam_role_arns_by_name
+  eks_cluster_dependency_arns    = local.eks_cluster_arns_by_name
+  eks_node_group_dependency_arns = local.eks_node_group_arns_by_name
+  eks_addon_dependency_arns      = local.eks_addon_arns_by_key
 }
 
 module "edge_containers_observability" {

@@ -164,18 +164,38 @@ data "aws_eks_cluster" "eks_irsa_cluster" {
   }
 
   name = each.value.cluster
+
+  depends_on = [terraform_data.eks_cluster_prerequisites]
+}
+
+resource "terraform_data" "eks_cluster_prerequisites" {
+  input = {
+    clusters = var.eks_cluster_dependency_arns
+  }
+}
+
+resource "terraform_data" "eks_runtime_prerequisites" {
+  input = {
+    clusters    = var.eks_cluster_dependency_arns
+    node_groups = var.eks_node_group_dependency_arns
+    addons      = var.eks_addon_dependency_arns
+  }
 }
 
 data "aws_eks_cluster" "helm_target" {
   count = local.k8s_target_cluster_name == null ? 0 : 1
 
   name = local.k8s_target_cluster_name
+
+  depends_on = [terraform_data.eks_runtime_prerequisites]
 }
 
 data "aws_eks_cluster_auth" "helm_target" {
   count = local.k8s_target_cluster_name == null ? 0 : 1
 
   name = local.k8s_target_cluster_name
+
+  depends_on = [terraform_data.eks_runtime_prerequisites]
 }
 
 provider "kubernetes" {
@@ -289,6 +309,8 @@ resource "aws_eks_fargate_profile" "managed" {
   }
 
   tags = try(each.value.tags, {})
+
+  depends_on = [terraform_data.eks_cluster_prerequisites]
 }
 
 resource "aws_eks_access_entry" "managed" {
@@ -298,6 +320,8 @@ resource "aws_eks_access_entry" "managed" {
   principal_arn     = each.value.principal_arn
   kubernetes_groups = try(each.value.kubernetes_groups, [])
   type              = try(each.value.type, "STANDARD")
+
+  depends_on = [terraform_data.eks_cluster_prerequisites]
 }
 
 resource "aws_eks_access_policy_association" "managed" {
@@ -314,6 +338,8 @@ resource "aws_eks_access_policy_association" "managed" {
     type       = try(each.value.access_scope.type, "cluster")
     namespaces = try(each.value.access_scope.namespaces, null)
   }
+
+  depends_on = [terraform_data.eks_cluster_prerequisites]
 }
 
 resource "aws_eks_pod_identity_association" "managed" {
@@ -323,6 +349,8 @@ resource "aws_eks_pod_identity_association" "managed" {
   namespace       = each.value.namespace
   service_account = each.value.service_account_name
   role_arn        = lookup(local.pod_identity_role_arns_by_name, each.value.role_arn, each.value.role_arn)
+
+  depends_on = [terraform_data.eks_runtime_prerequisites]
 }
 
 resource "helm_release" "managed" {
@@ -371,6 +399,7 @@ resource "helm_release" "managed" {
   }
 
   depends_on = [
+    terraform_data.eks_runtime_prerequisites,
     terraform_data.eks_helm_single_cluster_guard,
     aws_iam_role.eks_irsa,
     aws_iam_role_policy_attachment.eks_irsa,
@@ -410,6 +439,7 @@ resource "kubernetes_storage_class_v1" "managed" {
   }
 
   depends_on = [
+    terraform_data.eks_runtime_prerequisites,
     terraform_data.eks_helm_single_cluster_guard
   ]
 }
