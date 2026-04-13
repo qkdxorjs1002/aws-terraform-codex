@@ -127,6 +127,15 @@ terraform plan -var="spec_file=spec.example.yaml"
 terraform apply -var="spec_file=spec.example.yaml"
 ```
 
+스펙별로 state를 분리해서 하나씩 바로 실행하려면 Terraform workspace를 사용하세요.
+
+```bash
+terraform init
+terraform workspace select spec-vdh-stg-01-network || terraform workspace new spec-vdh-stg-01-network
+terraform plan  -var="spec_file=spec.vdh.stg.01.network.yaml"
+terraform apply -var="spec_file=spec.vdh.stg.01.network.yaml"
+```
+
 ## 작업 방법
 
 이 저장소는 아래 순서로 작업할 때 가장 안정적으로 유지됩니다.
@@ -337,6 +346,18 @@ just validate spec.example.yaml
 just plan spec.example.yaml
 just apply spec.example.yaml
 just destroy spec.example.yaml
+```
+
+workspace를 자동 선택/생성해서 spec별 state를 분리하려면:
+
+```bash
+# workspace 기반 실행 전 1회 초기화
+just init
+
+# spec 파일명 기반 workspace + 실행
+just plan-spec spec.vdh.stg.01.network.yaml
+just apply-spec spec.vdh.stg.01.network.yaml
+just destroy-spec spec.vdh.stg.01.network.yaml
 ```
 
 ## 협업 원칙
