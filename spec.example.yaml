@@ -2,7 +2,9 @@ project:
   name: "my-tst-tf"
   profile: "mzc"
   region: "ap-southeast-1"
-  env: "tst"
+  environment: "tst"
+  managed_by: "terraform-codex"
+  maintainer: "platform-team@example.com"
 
   resources:
     - iam_roles:

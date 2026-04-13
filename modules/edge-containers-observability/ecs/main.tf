@@ -61,7 +61,12 @@ resource "aws_ecs_cluster" "managed" {
     }
   }
 
-  tags = try(each.value.tags, {})
+  tags = merge(
+    {
+      Name = each.value.family
+    },
+    try(each.value.tags, {})
+  )
 }
 
 resource "aws_ecs_task_definition" "managed" {
@@ -131,7 +136,12 @@ resource "aws_ecs_task_definition" "managed" {
     }
   ])
 
-  tags = try(each.value.tags, {})
+  tags = merge(
+    {
+      Name = each.value.name
+    },
+    try(each.value.tags, {})
+  )
 }
 
 resource "aws_ecs_service" "managed" {
@@ -196,7 +206,12 @@ resource "aws_ecs_service" "managed" {
     }
   }
 
-  tags = try(each.value.tags, {})
+  tags = merge(
+    {
+      Name = each.value.name
+    },
+    try(each.value.tags, {})
+  )
 }
 
 resource "aws_appautoscaling_target" "ecs_service" {

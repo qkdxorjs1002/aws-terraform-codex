@@ -91,7 +91,12 @@ resource "aws_iam_role" "managed" {
   max_session_duration = try(each.value.max_session_duration, 3600)
   permissions_boundary = try(each.value.permissions_boundary, null)
 
-  tags = try(each.value.tags, {})
+  tags = merge(
+    {
+      Name = each.value.name
+    },
+    try(each.value.tags, {})
+  )
 }
 
 resource "aws_iam_role_policy_attachment" "managed" {

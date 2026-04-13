@@ -20,7 +20,12 @@ resource "aws_sns_topic" "managed" {
   policy                      = try(each.value.policy, null)
   delivery_policy             = try(each.value.delivery_policy, null)
 
-  tags = try(each.value.tags, {})
+  tags = merge(
+    {
+      Name = each.value.name
+    },
+    try(each.value.tags, {})
+  )
 }
 
 resource "aws_sns_topic_subscription" "managed" {

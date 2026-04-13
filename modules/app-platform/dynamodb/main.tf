@@ -75,5 +75,10 @@ resource "aws_dynamodb_table" "managed" {
 
   deletion_protection_enabled = try(each.value.deletion_protection_enabled, true)
 
-  tags = try(each.value.tags, {})
+  tags = merge(
+    {
+      Name = each.value.name
+    },
+    try(each.value.tags, {})
+  )
 }

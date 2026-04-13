@@ -2,7 +2,14 @@ project:
   name: "<project-name>"
   profile: "<aws-profile-name>" # Optional: AWS shared credentials/config profile name
   region: "<aws-region>"
-  env: "<env>"
+  environment: "<environment>"
+  managed_by: "<managed-by>" # Required: Applied to all taggable resources as global tag `ManagedBy`
+  maintainer: "<maintainer>" # Required: Applied to all taggable resources as global tag `Maintainer`
+  # Global default tags applied to taggable resources:
+  # - Environment: project.environment
+  # - ManagedBy: project.managed_by
+  # - Maintainer: project.maintainer
+  # Name tags are auto-generated from each resource identifier.
 
   resources:
     # iam_roles:

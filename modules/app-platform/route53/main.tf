@@ -26,7 +26,12 @@ resource "aws_route53_zone" "managed" {
     }
   }
 
-  tags = try(each.value.tags, {})
+  tags = merge(
+    {
+      Name = each.value.name
+    },
+    try(each.value.tags, {})
+  )
 }
 
 resource "aws_route53_record" "managed" {

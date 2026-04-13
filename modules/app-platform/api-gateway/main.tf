@@ -37,7 +37,12 @@ resource "aws_apigatewayv2_api" "managed" {
     }
   }
 
-  tags = try(each.value.tags, {})
+  tags = merge(
+    {
+      Name = each.value.name
+    },
+    try(each.value.tags, {})
+  )
 }
 
 resource "aws_apigatewayv2_stage" "default" {
@@ -56,7 +61,12 @@ resource "aws_apigatewayv2_stage" "default" {
     }
   }
 
-  tags = try(each.value.tags, {})
+  tags = merge(
+    {
+      Name = "${each.value.name}-default-stage"
+    },
+    try(each.value.tags, {})
+  )
 }
 
 resource "aws_apigatewayv2_integration" "managed" {

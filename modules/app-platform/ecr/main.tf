@@ -21,7 +21,12 @@ resource "aws_ecr_repository" "managed" {
     kms_key         = try(each.value.encryption_configuration.kms_key, null)
   }
 
-  tags = try(each.value.tags, {})
+  tags = merge(
+    {
+      Name = each.value.name
+    },
+    try(each.value.tags, {})
+  )
 }
 
 resource "aws_ecr_repository_policy" "managed" {

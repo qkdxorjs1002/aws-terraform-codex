@@ -29,5 +29,10 @@ resource "aws_elasticache_replication_group" "managed" {
   apply_immediately          = try(each.value.apply_immediately, false)
   auto_minor_version_upgrade = try(each.value.auto_minor_version_upgrade, true)
 
-  tags = try(each.value.tags, {})
+  tags = merge(
+    {
+      Name = each.value.replication_group_id
+    },
+    try(each.value.tags, {})
+  )
 }

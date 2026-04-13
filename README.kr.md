@@ -63,7 +63,9 @@ project:
   name: "my-project"
   profile: "my-aws-profile"
   region: "ap-northeast-2"
-  env: "dev"
+  environment: "dev"
+  managed_by: "terraform-codex"
+  maintainer: "platform-team@example.com"
   resources: []
 ```
 
@@ -74,7 +76,9 @@ project:
   name: "my-project"
   profile: "my-aws-profile"
   region: "ap-northeast-2"
-  env: "dev"
+  environment: "dev"
+  managed_by: "terraform-codex"
+  maintainer: "platform-team@example.com"
 
   resources:
     - vpcs:
@@ -83,7 +87,7 @@ project:
           additional_cidr_blocks:
             - "10.1.0.0/16"
           tags:
-            Environment: "dev"
+            Service: "network"
 
     - subnets:
         - name: "private-a"
@@ -93,6 +97,12 @@ project:
 ```
 
 중요한 점은 참조가 이름 기반이라는 것입니다. 예를 들어 서브넷은 VPC의 실제 ID가 아니라 `vpc: "main-vpc"`처럼 논리 이름을 참조합니다. 루트 모듈이 이를 생성된 리소스 ID로 매핑합니다.
+
+`project.environment`, `project.managed_by`, `project.maintainer`는 필수이며, 루트 provider의 `default_tags`로 모든 태깅 가능한 리소스에 전역 적용됩니다(`Environment`, `ManagedBy`, `Maintainer`).
+
+`Name` 태그는 각 리소스의 논리 식별자(`name`, `family`, `domain_name`, `alias` 등)로 자동 적용되므로, 스펙마다 `tags.Name`를 반복 입력할 필요가 없습니다.
+
+Terraform state에 없는 AWS 리소스는 이미 존재하더라도 Terraform이 수정/삭제하지 않습니다. 권한 레이어까지 강제하려면 `aws:ResourceTag/ManagedBy`가 프로젝트 값과 다를 때 update/delete를 거부하는 IAM/SCP 정책을 함께 사용하는 것을 권장합니다.
 
 `security_groups` 규칙에서 `source.type`/`destination.type`이 `security-group`인 경우, `value`에는 같은 스펙 내 논리 SG 이름 또는 실제 SG ID(`sg-...`)를 사용할 수 있습니다.
 
@@ -287,9 +297,9 @@ EKS 확장 구성을 담당합니다.
 
 이 저장소는 리소스 간 연결을 이름으로 많이 해석합니다. 따라서 아래처럼 일관된 논리 이름 규칙을 먼저 정해두면 관리가 쉬워집니다.
 
-- `<project>-<env>-vpc`
-- `<project>-<env>-private-a`
-- `<project>-<env>-eks-cluster`
+- `<project>-<environment>-vpc`
+- `<project>-<environment>-private-a`
+- `<project>-<environment>-eks-cluster`
 
 ### 2. 태그는 초기에 정리해두는 편이 좋습니다
 
@@ -297,9 +307,8 @@ EKS 확장 구성을 담당합니다.
 
 ```yaml
 tags:
-  Name: "my-project-dev-vpc"
-  Environment: "dev"
-  ManagedBy: "terraform"
+  Service: "network"
+  Owner: "platform-team"
 ```
 
 ### 3. 예제를 먼저 복사한 뒤 줄여 나가면 빠릅니다

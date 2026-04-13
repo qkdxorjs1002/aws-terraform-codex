@@ -3,6 +3,15 @@ locals {
 
   project = local.spec.project
 
+  project_environment = trimspace(try(local.project.environment, try(local.project.env, "")))
+  project_managed_by = trimspace(try(local.project.managed_by, ""))
+  project_maintainer = trimspace(try(local.project.maintainer, ""))
+  project_global_tags = merge(
+    local.project_environment != "" ? { Environment = local.project_environment } : {},
+    local.project_managed_by != "" ? { ManagedBy = local.project_managed_by } : {},
+    local.project_maintainer != "" ? { Maintainer = local.project_maintainer } : {}
+  )
+
   resource_types = toset(flatten([
     for resource in local.project.resources : keys(resource)
   ]))
@@ -184,9 +193,34 @@ locals {
   }
 }
 
+check "project_managed_by_is_set" {
+  assert {
+    condition     = local.project_managed_by != ""
+    error_message = "spec.yaml project.managed_by must be set to apply global ownership tags."
+  }
+}
+
+check "project_environment_is_set" {
+  assert {
+    condition     = local.project_environment != ""
+    error_message = "spec.yaml project.environment must be set to apply the global environment tag."
+  }
+}
+
+check "project_maintainer_is_set" {
+  assert {
+    condition     = local.project_maintainer != ""
+    error_message = "spec.yaml project.maintainer must be set to apply global ownership tags."
+  }
+}
+
 provider "aws" {
   region  = local.project.region
   profile = try(local.project.profile, null)
+
+  default_tags {
+    tags = local.project_global_tags
+  }
 }
 
 module "vpcs" {
@@ -368,7 +402,12 @@ module "eks_clusters" {
   cluster_role_name = try(each.value.iam.cluster_role_name, null)
   cluster_role_arn  = try(each.value.iam.cluster_role_arn, null)
 
-  tags = try(each.value.tags, {})
+  tags = merge(
+    {
+      Name = each.value.name
+    },
+    try(each.value.tags, {})
+  )
 
   depends_on = [module.subnets, module.security_groups, module.network_identity]
 }
@@ -404,7 +443,12 @@ module "eks_node_groups" {
   update_config   = try(each.value.update_config, null)
   remote_access   = try(each.value.remote_access, null)
 
-  tags = try(each.value.tags, {})
+  tags = merge(
+    {
+      Name = each.value.name
+    },
+    try(each.value.tags, {})
+  )
 
   depends_on = [module.eks_clusters, module.network_identity]
 }

@@ -17,5 +17,10 @@ resource "aws_acm_certificate" "managed" {
     certificate_transparency_logging_preference = try(each.value.transparency_logging_enabled, true) ? "ENABLED" : "DISABLED"
   }
 
-  tags = try(each.value.tags, {})
+  tags = merge(
+    {
+      Name = each.value.domain_name
+    },
+    try(each.value.tags, {})
+  )
 }

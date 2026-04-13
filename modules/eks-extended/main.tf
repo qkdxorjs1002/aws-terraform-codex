@@ -308,7 +308,12 @@ resource "aws_eks_fargate_profile" "managed" {
     }
   }
 
-  tags = try(each.value.tags, {})
+  tags = merge(
+    {
+      Name = each.value.name
+    },
+    try(each.value.tags, {})
+  )
 
   depends_on = [terraform_data.eks_cluster_prerequisites]
 }

@@ -28,7 +28,12 @@ resource "aws_cloudwatch_event_bus" "managed" {
   description        = try(each.value.description, null)
   kms_key_identifier = try(each.value.kms_key_identifier, null)
 
-  tags = try(each.value.tags, {})
+  tags = merge(
+    {
+      Name = each.value.name
+    },
+    try(each.value.tags, {})
+  )
 }
 
 resource "aws_cloudwatch_event_bus_policy" "managed" {

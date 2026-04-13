@@ -13,8 +13,12 @@ properties:
     required:
       - name
       - region
-      - env
+      - managed_by
+      - maintainer
       - resources
+    anyOf:
+      - required: [environment]
+      - required: [env]
     properties:
       name:
         type: string
@@ -25,7 +29,16 @@ properties:
       region:
         type: string
         minLength: 1
+      environment:
+        type: string
+        minLength: 1
       env:
+        type: string
+        minLength: 1
+      managed_by:
+        type: string
+        minLength: 1
+      maintainer:
         type: string
         minLength: 1
       resources:

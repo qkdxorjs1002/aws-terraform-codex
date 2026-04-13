@@ -135,5 +135,10 @@ resource "aws_cloudfront_distribution" "managed" {
     }
   }
 
-  tags = try(each.value.tags, {})
+  tags = merge(
+    {
+      Name = each.value.name
+    },
+    try(each.value.tags, {})
+  )
 }

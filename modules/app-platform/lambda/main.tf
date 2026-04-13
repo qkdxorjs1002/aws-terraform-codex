@@ -85,7 +85,12 @@ resource "aws_lambda_function" "managed" {
     mode = try(each.value.tracing_mode, "PassThrough")
   }
 
-  tags = try(each.value.tags, {})
+  tags = merge(
+    {
+      Name = each.value.name
+    },
+    try(each.value.tags, {})
+  )
 
   depends_on = [aws_cloudwatch_log_group.lambda]
 }

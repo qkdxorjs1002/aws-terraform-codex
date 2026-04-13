@@ -61,7 +61,9 @@ project:
   name: "my-project"
   profile: "my-aws-profile"
   region: "ap-northeast-2"
-  env: "dev"
+  environment: "dev"
+  managed_by: "terraform-codex"
+  maintainer: "platform-team@example.com"
   resources: []
 ```
 
@@ -72,7 +74,9 @@ project:
   name: "my-project"
   profile: "my-aws-profile"
   region: "ap-northeast-2"
-  env: "dev"
+  environment: "dev"
+  managed_by: "terraform-codex"
+  maintainer: "platform-team@example.com"
 
   resources:
     - vpcs:
@@ -81,7 +85,7 @@ project:
           additional_cidr_blocks:
             - "10.1.0.0/16"
           tags:
-            Environment: "dev"
+            Service: "network"
 
     - subnets:
         - name: "private-a"
@@ -91,6 +95,12 @@ project:
 ```
 
 References are name-based. For example, a subnet points to `vpc: "main-vpc"` instead of a raw VPC ID, and the root module resolves that logical name to the created resource ID.
+
+`project.environment`, `project.managed_by`, and `project.maintainer` are required, and the root provider applies them as global tags to all taggable resources through `default_tags` (`Environment`, `ManagedBy`, `Maintainer`).
+
+`Name` tags are applied automatically from each resource's logical identifier (for example `name`, `family`, `domain_name`, or `alias`), so you do not need to manually duplicate `tags.Name` in every spec block.
+
+Resources that are not in Terraform state are not modified or deleted by Terraform even if they already exist in AWS. For stronger protection at the permission layer, use IAM/SCP policies that deny update/delete actions when `aws:ResourceTag/ManagedBy` does not match your project value.
 
 For `security_groups` rules, when `source.type`/`destination.type` is `security-group`, `value` can be either a logical security group name from the same spec or a literal security group ID (`sg-...`).
 
@@ -283,9 +293,9 @@ Owns platform-level application services:
 
 This repository resolves many relationships by logical name, so consistent naming pays off.
 
-- `<project>-<env>-vpc`
-- `<project>-<env>-private-a`
-- `<project>-<env>-eks-cluster`
+- `<project>-<environment>-vpc`
+- `<project>-<environment>-private-a`
+- `<project>-<environment>-eks-cluster`
 
 ### 2. Standardize Tags Early
 
@@ -293,9 +303,8 @@ Tag consistency becomes more important over time.
 
 ```yaml
 tags:
-  Name: "my-project-dev-vpc"
-  Environment: "dev"
-  ManagedBy: "terraform"
+  Service: "network"
+  Owner: "platform-team"
 ```
 
 ### 3. Start From the Example, Then Trim Down

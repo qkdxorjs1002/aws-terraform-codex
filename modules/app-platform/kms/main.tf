@@ -17,7 +17,12 @@ resource "aws_kms_key" "managed" {
   multi_region             = try(each.value.multi_region, false)
   policy                   = try(each.value.policy, null)
 
-  tags = try(each.value.tags, {})
+  tags = merge(
+    {
+      Name = each.value.alias
+    },
+    try(each.value.tags, {})
+  )
 }
 
 resource "aws_kms_alias" "managed" {

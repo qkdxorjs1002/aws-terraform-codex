@@ -24,7 +24,12 @@ resource "aws_cloudwatch_log_group" "managed" {
   skip_destroy      = try(each.value.skip_destroy, false)
   log_group_class   = try(each.value.log_group_class, null)
 
-  tags = try(each.value.tags, {})
+  tags = merge(
+    {
+      Name = each.value.name
+    },
+    try(each.value.tags, {})
+  )
 }
 
 resource "aws_cloudwatch_metric_alarm" "managed" {

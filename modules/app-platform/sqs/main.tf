@@ -34,5 +34,10 @@ resource "aws_sqs_queue" "managed" {
 
   redrive_allow_policy = try(each.value.redrive_allow_policy, null)
 
-  tags = try(each.value.tags, {})
+  tags = merge(
+    {
+      Name = each.value.name
+    },
+    try(each.value.tags, {})
+  )
 }
