@@ -26,9 +26,12 @@ project:
     # vpcs:
     # - name: Logical VPC identifier used by dependent resources.
     # - cidr: IPv4 CIDR range for the VPC.
+    # - additional_cidr_blocks: Optional secondary IPv4 CIDR ranges associated with the VPC.
     - vpcs:
         - name: "<vpc-name>"
           cidr: "10.0.0.0/16"
+          additional_cidr_blocks:
+            - "10.1.0.0/16"
           enable_dns_support: true
           enable_dns_hostnames: true
           instance_tenancy: "default" # default | dedicated

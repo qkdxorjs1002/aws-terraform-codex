@@ -45,6 +45,8 @@ project:
     - vpcs:
         - name: "my-tst-tf-vpc-ap1"
           cidr: "10.80.0.0/16"
+          additional_cidr_blocks:
+            - "10.81.0.0/16"
           enable_dns_support: true
           enable_dns_hostnames: true
           instance_tenancy: "default"
@@ -101,7 +103,7 @@ project:
         - name: "my-tst-tf-sbn-pri-ap1a"
           vpc: "my-tst-tf-vpc-ap1"
           availability_zone: "ap-southeast-1a"
-          cidr: "10.80.2.0/24"
+          cidr: "10.81.2.0/24"
           map_public_ip_on_launch: false
           assign_ipv6_address_on_creation: false
           tags:
@@ -112,7 +114,7 @@ project:
         - name: "my-tst-tf-sbn-pri-ap1c"
           vpc: "my-tst-tf-vpc-ap1"
           availability_zone: "ap-southeast-1c"
-          cidr: "10.80.3.0/24"
+          cidr: "10.81.3.0/24"
           map_public_ip_on_launch: false
           assign_ipv6_address_on_creation: false
           tags:

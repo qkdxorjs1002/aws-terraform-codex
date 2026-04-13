@@ -6,6 +6,11 @@ variable "cidr" {
   type = string
 }
 
+variable "additional_cidr_blocks" {
+  type    = list(string)
+  default = []
+}
+
 variable "enable_dns_support" {
   type    = bool
   default = true

@@ -12,3 +12,10 @@ resource "aws_vpc" "this" {
     var.tags
   )
 }
+
+resource "aws_vpc_ipv4_cidr_block_association" "additional" {
+  for_each = toset(var.additional_cidr_blocks)
+
+  vpc_id     = aws_vpc.this.id
+  cidr_block = each.value
+}

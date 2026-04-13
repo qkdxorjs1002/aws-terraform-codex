@@ -78,6 +78,8 @@ project:
     - vpcs:
         - name: "main-vpc"
           cidr: "10.0.0.0/16"
+          additional_cidr_blocks:
+            - "10.1.0.0/16"
           tags:
             Environment: "dev"
 
@@ -85,7 +87,7 @@ project:
         - name: "private-a"
           vpc: "main-vpc"
           availability_zone: "ap-northeast-2a"
-          cidr: "10.0.1.0/24"
+          cidr: "10.1.1.0/24"
 ```
 
 중요한 점은 참조가 이름 기반이라는 것입니다. 예를 들어 서브넷은 VPC의 실제 ID가 아니라 `vpc: "main-vpc"`처럼 논리 이름을 참조합니다. 루트 모듈이 이를 생성된 리소스 ID로 매핑합니다.

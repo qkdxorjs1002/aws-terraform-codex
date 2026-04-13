@@ -139,9 +139,10 @@ module "vpcs" {
   source   = "./modules/vpc"
   for_each = local.vpcs
 
-  name = each.value.name
-  cidr = each.value.cidr
-  tags = try(each.value.tags, {})
+  name                   = each.value.name
+  cidr                   = each.value.cidr
+  additional_cidr_blocks = try(each.value.additional_cidr_blocks, [])
+  tags                   = try(each.value.tags, {})
 
   enable_dns_support               = try(each.value.enable_dns_support, true)
   enable_dns_hostnames             = try(each.value.enable_dns_hostnames, true)

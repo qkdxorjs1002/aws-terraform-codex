@@ -76,6 +76,8 @@ project:
     - vpcs:
         - name: "main-vpc"
           cidr: "10.0.0.0/16"
+          additional_cidr_blocks:
+            - "10.1.0.0/16"
           tags:
             Environment: "dev"
 
@@ -83,7 +85,7 @@ project:
         - name: "private-a"
           vpc: "main-vpc"
           availability_zone: "ap-northeast-2a"
-          cidr: "10.0.1.0/24"
+          cidr: "10.1.1.0/24"
 ```
 
 References are name-based. For example, a subnet points to `vpc: "main-vpc"` instead of a raw VPC ID, and the root module resolves that logical name to the created resource ID.
