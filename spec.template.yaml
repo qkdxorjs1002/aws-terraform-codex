@@ -349,6 +349,9 @@ project:
     # - image_id/instance_type/key_name: Optional EC2 launch defaults used by consumers.
     #   image_id accepts either an AMI ID (ami-*) or an AMI name for lookup.
     # - image_owners/image_most_recent: Optional AMI lookup controls when image_id is a name.
+    # - user_data_file/user_data/user_data_base64: Optional boot script inputs.
+    #   Priority is user_data_base64 > user_data_file > user_data.
+    #   user_data_file is resolved from repository root (or absolute path).
     # - vpc_security_groups: Security groups by logical name or ID.
     # - block_device_mappings[]: Optional EBS mapping defaults (encryption/size/type).
     # - update_default_version: Automatically promote each new version as default.
@@ -362,6 +365,7 @@ project:
           image_most_recent: true
           instance_type: "m6i.large"
           key_name: "<optional-keypair-name>"
+          user_data_file: "user-data/<optional-launch-template-user-data-file>"
           update_default_version: true
           ebs_optimized: true
           monitoring: true

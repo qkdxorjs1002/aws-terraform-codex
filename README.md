@@ -107,6 +107,7 @@ For `security_groups` rules, when `source.type`/`destination.type` is `security-
 For EKS Pod Identity associations, `role_arn` also accepts a role name (logical name from `iam_roles` or `eks_irsa_roles`) in addition to a literal ARN.
 
 For EC2 launch templates, `image_id` accepts either an AMI ID (`ami-*`) or an AMI name. If using an AMI name, you can set optional `image_owners` (default: `["self"]`) and `image_most_recent` (default: `true`) to control lookup behavior.
+For launch template user data, you can set `user_data_file` to load content from a file path (relative to repo root or absolute path). Priority is `user_data_base64` > `user_data_file` > inline `user_data`.
 
 ### 4. Initialize and Validate
 

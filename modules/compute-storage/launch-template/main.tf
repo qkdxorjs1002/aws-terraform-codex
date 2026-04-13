@@ -60,8 +60,15 @@ resource "aws_launch_template" "managed" {
     lookup(var.security_group_ids_by_name, security_group, security_group)
   ]
 
-  user_data = try(each.value.user_data_base64, null) != null ? each.value.user_data_base64 : (
-    try(each.value.user_data, null) != null ? base64encode(each.value.user_data) : null
+  user_data = (
+    try(each.value.user_data_base64, null) != null ? each.value.user_data_base64 :
+    try(trimspace(each.value.user_data_file), "") != "" ? base64encode(file(
+      startswith(trimspace(each.value.user_data_file), "/") ?
+      trimspace(each.value.user_data_file) :
+      "${path.root}/${trimspace(each.value.user_data_file)}"
+    )) :
+    try(each.value.user_data, null) != null ? base64encode(each.value.user_data) :
+    null
   )
 
   dynamic "iam_instance_profile" {
