@@ -34,7 +34,9 @@ That gives us a few practical benefits:
 The root module uses:
 
 - default spec file: `spec.yaml`
-- alternate spec file: `-var="spec_file=..."`
+- alternate spec file:
+  - `-var="spec_file=..."` for `plan`, `apply`, `destroy`
+  - `TF_VAR_spec_file=...` for `validate`
 
 ### 2. Create a Spec File
 
@@ -100,7 +102,7 @@ terraform validate
 To validate with another spec file:
 
 ```bash
-terraform validate -var="spec_file=spec.example.yaml"
+TF_VAR_spec_file=spec.example.yaml terraform validate
 ```
 
 ### 5. Plan or Apply When Needed
@@ -164,6 +166,7 @@ The repository policy is simple:
 
 ```text
 .
+├── justfile
 ├── main.tf
 ├── modules_domains.tf
 ├── variables.tf
@@ -313,6 +316,21 @@ terraform plan -var="spec_file=spec.example.yaml"
 
 # Apply with a specific spec file
 terraform apply -var="spec_file=spec.example.yaml"
+```
+
+You can also use `justfile` shortcuts to run Terraform with a chosen spec file:
+
+```bash
+# Validate with default spec.yaml
+just validate
+
+# Validate with a specific spec file
+just validate spec.example.yaml
+
+# Plan / Apply / Destroy with a specific spec file
+just plan spec.example.yaml
+just apply spec.example.yaml
+just destroy spec.example.yaml
 ```
 
 ## Collaboration Principles

@@ -36,7 +36,9 @@
 루트 모듈은 아래 설정을 사용합니다.
 
 - 기본 스펙 파일: `spec.yaml`
-- 대체 스펙 파일: `-var="spec_file=..."` 로 지정 가능
+- 대체 스펙 파일:
+  - `plan`, `apply`, `destroy`는 `-var="spec_file=..."`
+  - `validate`는 `TF_VAR_spec_file=...`
 
 ### 2. 스펙 파일 만들기
 
@@ -104,7 +106,7 @@ terraform validate
 다른 스펙 파일을 쓰고 싶다면 다음처럼 지정할 수 있습니다.
 
 ```bash
-terraform validate -var="spec_file=spec.example.yaml"
+TF_VAR_spec_file=spec.example.yaml terraform validate
 ```
 
 ### 5. 실제 배포가 필요할 때
@@ -168,6 +170,7 @@ terraform apply -var="spec_file=spec.example.yaml"
 
 ```text
 .
+├── justfile
 ├── main.tf
 ├── modules_domains.tf
 ├── variables.tf
@@ -317,6 +320,21 @@ terraform plan -var="spec_file=spec.example.yaml"
 
 # 특정 스펙 파일로 적용
 terraform apply -var="spec_file=spec.example.yaml"
+```
+
+`justfile` 단축 명령으로도 스펙 파일을 지정해 실행할 수 있습니다.
+
+```bash
+# 기본 spec.yaml 검증
+just validate
+
+# 특정 스펙 파일 검증
+just validate spec.example.yaml
+
+# 특정 스펙 파일로 계획/적용/삭제
+just plan spec.example.yaml
+just apply spec.example.yaml
+just destroy spec.example.yaml
 ```
 
 ## 협업 원칙
