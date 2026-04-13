@@ -92,6 +92,8 @@ project:
 
 References are name-based. For example, a subnet points to `vpc: "main-vpc"` instead of a raw VPC ID, and the root module resolves that logical name to the created resource ID.
 
+For EKS Pod Identity associations, `role_arn` also accepts a role name (logical name from `iam_roles` or `eks_irsa_roles`) in addition to a literal ARN.
+
 ### 4. Initialize and Validate
 
 ```bash

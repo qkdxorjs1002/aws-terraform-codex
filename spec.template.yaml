@@ -734,12 +734,12 @@ project:
 
     # eks_pod_identity_associations:
     # - cluster/namespace/service_account_name: Kubernetes identity target.
-    # - role_arn: IAM role ARN assumed by pods through EKS Pod Identity.
+    # - role_arn: IAM role ARN or IAM role logical name (from iam_roles/eks_irsa_roles).
     - eks_pod_identity_associations:
         - cluster: "<eks-cluster-name>"
           namespace: "default"
           service_account_name: "<service-account-name>"
-          role_arn: "arn:aws:iam::<account-id>:role/<pod-identity-role-name>"
+          role_arn: "<pod-identity-role-name-or-arn>"
 
     # waf_web_acls:
     # - name/scope/default_action: WAF ACL identity, scope, and default allow/block behavior.

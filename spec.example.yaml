@@ -578,4 +578,4 @@ project:
         - cluster: "my-tst-tf-eks-ap1"
           namespace: "kube-system"
           service_account_name: "external-dns"
-          role_arn: "arn:aws:iam::<account-id>:role/my-tst-tf-external-dns-pod-identity-role"
+          role_arn: "my-tst-tf-external-dns-pod-identity-role"

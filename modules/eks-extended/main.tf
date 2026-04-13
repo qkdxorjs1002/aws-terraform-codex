@@ -92,6 +92,11 @@ locals {
     role_name => role.arn
   }
 
+  pod_identity_role_arns_by_name = merge(
+    var.iam_role_arns_by_name,
+    local.eks_irsa_role_arns_by_name
+  )
+
   helm_role_arns_by_name = merge(
     var.iam_role_arns_by_name,
     local.eks_irsa_role_arns_by_name
@@ -317,7 +322,7 @@ resource "aws_eks_pod_identity_association" "managed" {
   cluster_name    = each.value.cluster
   namespace       = each.value.namespace
   service_account = each.value.service_account_name
-  role_arn        = each.value.role_arn
+  role_arn        = lookup(local.pod_identity_role_arns_by_name, each.value.role_arn, each.value.role_arn)
 }
 
 resource "helm_release" "managed" {

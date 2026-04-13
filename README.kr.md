@@ -94,6 +94,8 @@ project:
 
 중요한 점은 참조가 이름 기반이라는 것입니다. 예를 들어 서브넷은 VPC의 실제 ID가 아니라 `vpc: "main-vpc"`처럼 논리 이름을 참조합니다. 루트 모듈이 이를 생성된 리소스 ID로 매핑합니다.
 
+EKS Pod Identity association의 `role_arn`은 리터럴 ARN뿐 아니라 role 이름(`iam_roles` 또는 `eks_irsa_roles`의 논리 이름)도 입력할 수 있습니다.
+
 ### 4. 초기화 및 검증
 
 모듈과 provider를 초기화한 뒤 검증합니다.
