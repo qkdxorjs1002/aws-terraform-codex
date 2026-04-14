@@ -232,6 +232,8 @@ Primary responsibilities:
 - transform the `resources` array into per-type maps
 - resolve name-based references into resource IDs
 - coordinate module dependencies
+- ensure Security Group resources and SG logical-rule resources are applied before EKS modules
+- manage Security Group rules with standalone `aws_vpc_security_group_ingress_rule` / `aws_vpc_security_group_egress_rule` resources to avoid reconciliation churn
 
 ### `modules/network-identity`
 
@@ -263,6 +265,10 @@ Owns extended EKS functionality:
 - EKS Access Entries
 - Pod Identity Associations
 - Root orchestration passes EKS cluster/node group/add-on dependency signals into `eks-extended`, so Helm/Kubernetes operations are evaluated after cluster provisioning prerequisites.
+- Helm/Kubernetes authentication uses `aws eks get-token` and includes `project.profile` when set.
+- If EKS cluster creator admin bootstrap is disabled, define `eks_access_entries` for the Terraform execution principal before Helm/Kubernetes resources.
+- Within `eks-extended`, access entries and access policy associations are applied before pod identity associations.
+- EKS orchestration order is fixed as `eks_clusters -> eks_node_groups -> eks_addons -> eks_extended`.
 
 ### `modules/edge-containers-observability`
 

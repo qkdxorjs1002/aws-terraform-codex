@@ -236,6 +236,8 @@ terraform apply -var="spec_file=spec.vdh.stg.01.network.yaml"
 - `resources` 배열을 타입별 맵으로 변환
 - 이름 기반 참조를 실제 리소스 ID로 매핑
 - 모듈 호출 및 의존성 순서 관리
+- Security Group 리소스와 SG 논리 rule 리소스를 EKS 모듈보다 먼저 적용하도록 순서 보장
+- Security Group rule은 `aws_vpc_security_group_ingress_rule` / `aws_vpc_security_group_egress_rule` 분리 리소스로 관리해 재조정(churn) 이슈를 방지
 
 ### `modules/network-identity`
 
@@ -267,6 +269,10 @@ EKS 확장 구성을 담당합니다.
 - EKS Access Entries
 - Pod Identity Associations
 - 루트 오케스트레이션은 EKS cluster/node group/add-on 의존 신호를 `eks-extended`로 전달하며, 이를 통해 Helm/Kubernetes 작업은 클러스터 프로비저닝 선행조건 이후에 평가됩니다.
+- Helm/Kubernetes 인증은 `aws eks get-token`을 사용하며, `project.profile`이 설정된 경우 해당 프로파일을 포함해 호출합니다.
+- EKS cluster creator admin bootstrap이 비활성화된 경우, Helm/Kubernetes 리소스보다 먼저 Terraform 실행 주체에 대한 `eks_access_entries`를 정의해야 합니다.
+- `eks-extended` 내부에서는 access entry 및 access policy association이 pod identity association보다 먼저 적용됩니다.
+- EKS 오케스트레이션 순서는 `eks_clusters -> eks_node_groups -> eks_addons -> eks_extended`로 고정됩니다.
 
 ### `modules/edge-containers-observability`
 

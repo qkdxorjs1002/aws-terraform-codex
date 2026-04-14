@@ -7,6 +7,11 @@ variable "region" {
   type = string
 }
 
+variable "profile" {
+  type    = string
+  default = null
+}
+
 variable "vpc_ids_by_name" {
   type    = map(string)
   default = {}

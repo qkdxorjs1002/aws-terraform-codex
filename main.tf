@@ -121,7 +121,7 @@ locals {
 
   managed_iam_role_names = toset(keys(module.network_identity.iam_role_arns_by_name))
 
-  security_group_inbound_rules_using_logical_name = flatten([
+  security_group_inbound_rules = flatten([
     for security_group_name, security_group in local.security_groups : [
       for index, rule in try(security_group.inbound_rules, []) : {
         key                 = "${security_group_name}:inbound:${index}"
@@ -130,12 +130,13 @@ locals {
         protocol            = try(rule.protocol, "tcp")
         from_port           = try(tonumber(rule.port_range.from), try(tonumber(rule.port_range), 0))
         to_port             = try(tonumber(rule.port_range.to), try(tonumber(rule.port_range), 0))
-        peer_name           = try(rule.source.value, "")
-      } if try(rule.source.type, "ip") == "security-group" && contains(local.security_group_names, try(rule.source.value, ""))
+        peer_type           = try(rule.source.type, "ip")
+        peer_value          = try(rule.source.value, "0.0.0.0/0")
+      }
     ]
   ])
 
-  security_group_outbound_rules_using_logical_name = flatten([
+  security_group_outbound_rules = flatten([
     for security_group_name, security_group in local.security_groups : [
       for index, rule in try(security_group.outbound_rules, []) : {
         key                 = "${security_group_name}:outbound:${index}"
@@ -144,8 +145,9 @@ locals {
         protocol            = try(rule.protocol, "tcp")
         from_port           = try(tonumber(rule.port_range.from), try(tonumber(rule.port_range), 0))
         to_port             = try(tonumber(rule.port_range.to), try(tonumber(rule.port_range), 0))
-        peer_name           = try(rule.destination.value, "")
-      } if try(rule.destination.type, "ip") == "security-group" && contains(local.security_group_names, try(rule.destination.value, ""))
+        peer_type           = try(rule.destination.type, "ip")
+        peer_value          = try(rule.destination.value, "0.0.0.0/0")
+      }
     ]
   ])
 
@@ -362,61 +364,61 @@ module "security_groups" {
   vpc_id                 = lookup(local.vpc_ids_by_name, each.value.vpc, each.value.vpc)
   revoke_rules_on_delete = try(each.value.revoke_rules_on_delete, false)
 
-  inbound_rules = [
-    for rule in try(each.value.inbound_rules, []) : {
-      description = try(rule.description, null)
-      protocol    = try(rule.protocol, "tcp")
-      from_port   = try(tonumber(rule.port_range.from), try(tonumber(rule.port_range), 0))
-      to_port     = try(tonumber(rule.port_range.to), try(tonumber(rule.port_range), 0))
-      peer_type   = try(rule.source.type, "ip")
-      peer_value  = try(rule.source.value, "0.0.0.0/0")
-    }
-    if !(try(rule.source.type, "ip") == "security-group" && contains(local.security_group_names, try(rule.source.value, "")))
-  ]
-
-  outbound_rules = [
-    for rule in try(each.value.outbound_rules, []) : {
-      description = try(rule.description, null)
-      protocol    = try(rule.protocol, "tcp")
-      from_port   = try(tonumber(rule.port_range.from), try(tonumber(rule.port_range), 0))
-      to_port     = try(tonumber(rule.port_range.to), try(tonumber(rule.port_range), 0))
-      peer_type   = try(rule.destination.type, "ip")
-      peer_value  = try(rule.destination.value, "0.0.0.0/0")
-    }
-    if !(try(rule.destination.type, "ip") == "security-group" && contains(local.security_group_names, try(rule.destination.value, "")))
-  ]
-
   tags = try(each.value.tags, {})
 
   depends_on = [module.vpcs]
 }
 
-resource "aws_vpc_security_group_ingress_rule" "logical_security_group_sources" {
+resource "aws_vpc_security_group_ingress_rule" "managed" {
   for_each = {
-    for rule in local.security_group_inbound_rules_using_logical_name :
+    for rule in local.security_group_inbound_rules :
     rule.key => rule
   }
 
-  security_group_id            = module.security_groups[each.value.security_group_name].id
-  description                  = each.value.description
-  ip_protocol                  = each.value.protocol
-  from_port                    = each.value.protocol == "-1" ? null : each.value.from_port
-  to_port                      = each.value.protocol == "-1" ? null : each.value.to_port
-  referenced_security_group_id = module.security_groups[each.value.peer_name].id
+  security_group_id = module.security_groups[each.value.security_group_name].id
+  description       = each.value.description
+  ip_protocol       = each.value.protocol
+  from_port         = each.value.protocol == "-1" ? null : each.value.from_port
+  to_port           = each.value.protocol == "-1" ? null : each.value.to_port
+
+  cidr_ipv4 = each.value.peer_type == "ip" ? each.value.peer_value : null
+  cidr_ipv6 = each.value.peer_type == "ipv6" ? each.value.peer_value : null
+
+  prefix_list_id = each.value.peer_type == "prefix-list" ? each.value.peer_value : null
+
+  referenced_security_group_id = each.value.peer_type == "security-group" ? (
+    contains(local.security_group_names, each.value.peer_value) ?
+    module.security_groups[each.value.peer_value].id :
+    each.value.peer_value
+    ) : each.value.peer_type == "self" ? (
+    module.security_groups[each.value.security_group_name].id
+  ) : null
 }
 
-resource "aws_vpc_security_group_egress_rule" "logical_security_group_destinations" {
+resource "aws_vpc_security_group_egress_rule" "managed" {
   for_each = {
-    for rule in local.security_group_outbound_rules_using_logical_name :
+    for rule in local.security_group_outbound_rules :
     rule.key => rule
   }
 
-  security_group_id            = module.security_groups[each.value.security_group_name].id
-  description                  = each.value.description
-  ip_protocol                  = each.value.protocol
-  from_port                    = each.value.protocol == "-1" ? null : each.value.from_port
-  to_port                      = each.value.protocol == "-1" ? null : each.value.to_port
-  referenced_security_group_id = module.security_groups[each.value.peer_name].id
+  security_group_id = module.security_groups[each.value.security_group_name].id
+  description       = each.value.description
+  ip_protocol       = each.value.protocol
+  from_port         = each.value.protocol == "-1" ? null : each.value.from_port
+  to_port           = each.value.protocol == "-1" ? null : each.value.to_port
+
+  cidr_ipv4 = each.value.peer_type == "ip" ? each.value.peer_value : null
+  cidr_ipv6 = each.value.peer_type == "ipv6" ? each.value.peer_value : null
+
+  prefix_list_id = each.value.peer_type == "prefix-list" ? each.value.peer_value : null
+
+  referenced_security_group_id = each.value.peer_type == "security-group" ? (
+    contains(local.security_group_names, each.value.peer_value) ?
+    module.security_groups[each.value.peer_value].id :
+    each.value.peer_value
+    ) : each.value.peer_type == "self" ? (
+    module.security_groups[each.value.security_group_name].id
+  ) : null
 }
 
 module "eks_clusters" {
@@ -454,7 +456,12 @@ module "eks_clusters" {
     try(each.value.tags, {})
   )
 
-  depends_on = [module.subnets, module.security_groups]
+  depends_on = [
+    module.subnets,
+    module.security_groups,
+    aws_vpc_security_group_ingress_rule.managed,
+    aws_vpc_security_group_egress_rule.managed
+  ]
 }
 
 module "eks_node_groups" {
@@ -495,7 +502,10 @@ module "eks_node_groups" {
     try(each.value.tags, {})
   )
 
-  depends_on = [module.eks_clusters]
+  depends_on = [
+    module.eks_clusters,
+    module.compute_storage
+  ]
 }
 
 module "eks_addons" {
@@ -514,5 +524,8 @@ module "eks_addons" {
   configuration_values     = try(each.value.configuration_values, null)
   preserve                 = try(each.value.preserve, false)
 
-  depends_on = [module.eks_clusters]
+  depends_on = [
+    module.eks_clusters,
+    module.eks_node_groups
+  ]
 }

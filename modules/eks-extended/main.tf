@@ -154,6 +154,9 @@ locals {
       }
     ]
   }
+
+  aws_cli_profile_args          = try(trimspace(var.profile), "") != "" ? ["--profile", trimspace(var.profile)] : []
+  k8s_exec_cluster_name_or_empty = coalesce(local.k8s_target_cluster_name, "")
 }
 
 data "aws_eks_cluster" "eks_irsa_cluster" {
@@ -190,25 +193,47 @@ data "aws_eks_cluster" "helm_target" {
   depends_on = [terraform_data.eks_runtime_prerequisites]
 }
 
-data "aws_eks_cluster_auth" "helm_target" {
-  count = local.k8s_target_cluster_name == null ? 0 : 1
-
-  name = local.k8s_target_cluster_name
-
-  depends_on = [terraform_data.eks_runtime_prerequisites]
-}
-
 provider "kubernetes" {
   host                   = try(data.aws_eks_cluster.helm_target[0].endpoint, "https://127.0.0.1")
   cluster_ca_certificate = try(base64decode(data.aws_eks_cluster.helm_target[0].certificate_authority[0].data), "")
-  token                  = try(data.aws_eks_cluster_auth.helm_target[0].token, "")
+
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    command     = "aws"
+    args = concat(
+      [
+        "eks",
+        "get-token",
+        "--cluster-name",
+        local.k8s_exec_cluster_name_or_empty,
+        "--region",
+        var.region
+      ],
+      local.aws_cli_profile_args
+    )
+  }
 }
 
 provider "helm" {
   kubernetes {
     host                   = try(data.aws_eks_cluster.helm_target[0].endpoint, "https://127.0.0.1")
     cluster_ca_certificate = try(base64decode(data.aws_eks_cluster.helm_target[0].certificate_authority[0].data), "")
-    token                  = try(data.aws_eks_cluster_auth.helm_target[0].token, "")
+
+    exec {
+      api_version = "client.authentication.k8s.io/v1beta1"
+      command     = "aws"
+      args = concat(
+        [
+          "eks",
+          "get-token",
+          "--cluster-name",
+          local.k8s_exec_cluster_name_or_empty,
+          "--region",
+          var.region
+        ],
+        local.aws_cli_profile_args
+      )
+    }
   }
 }
 
@@ -344,7 +369,10 @@ resource "aws_eks_access_policy_association" "managed" {
     namespaces = try(each.value.access_scope.namespaces, null)
   }
 
-  depends_on = [terraform_data.eks_cluster_prerequisites]
+  depends_on = [
+    terraform_data.eks_cluster_prerequisites,
+    aws_eks_access_entry.managed
+  ]
 }
 
 resource "aws_eks_pod_identity_association" "managed" {
@@ -355,7 +383,12 @@ resource "aws_eks_pod_identity_association" "managed" {
   service_account = each.value.service_account_name
   role_arn        = lookup(local.pod_identity_role_arns_by_name, each.value.role_arn, each.value.role_arn)
 
-  depends_on = [terraform_data.eks_runtime_prerequisites]
+  depends_on = [
+    terraform_data.eks_runtime_prerequisites,
+    aws_eks_access_entry.managed,
+    aws_eks_access_policy_association.managed,
+    helm_release.managed
+  ]
 }
 
 resource "helm_release" "managed" {
@@ -408,7 +441,9 @@ resource "helm_release" "managed" {
     terraform_data.eks_helm_single_cluster_guard,
     aws_iam_role.eks_irsa,
     aws_iam_role_policy_attachment.eks_irsa,
-    aws_iam_role_policy.eks_irsa
+    aws_iam_role_policy.eks_irsa,
+    aws_eks_access_entry.managed,
+    aws_eks_access_policy_association.managed
   ]
 }
 
@@ -445,6 +480,8 @@ resource "kubernetes_storage_class_v1" "managed" {
 
   depends_on = [
     terraform_data.eks_runtime_prerequisites,
-    terraform_data.eks_helm_single_cluster_guard
+    terraform_data.eks_helm_single_cluster_guard,
+    aws_eks_access_entry.managed,
+    aws_eks_access_policy_association.managed
   ]
 }

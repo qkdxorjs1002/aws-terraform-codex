@@ -39,6 +39,7 @@ module "eks_extended" {
 
   resources_by_type          = local.resources_by_type
   region                     = local.project.region
+  profile                    = try(local.project.profile, null)
   vpc_ids_by_name            = local.vpc_ids_by_name
   subnet_ids_by_name         = local.subnet_ids_by_name
   route_table_ids_by_name    = local.route_table_ids_by_name
