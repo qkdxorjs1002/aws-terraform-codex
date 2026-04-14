@@ -5,9 +5,16 @@ locals {
     var.service_account_role_arn == null || trimspace(var.service_account_role_arn) == ""
   ) ? null : var.service_account_role_arn
 
-  effective_configuration_values = (
+  raw_configuration_values = (
     var.configuration_values == null || trimspace(var.configuration_values) == ""
-  ) ? null : var.configuration_values
+  ) ? null : trimspace(var.configuration_values)
+
+  # Normalize JSON strings to avoid perpetual whitespace-only diffs.
+  effective_configuration_values = local.raw_configuration_values == null ? null : (
+    can(jsondecode(local.raw_configuration_values)) ?
+    jsonencode(jsondecode(local.raw_configuration_values)) :
+    local.raw_configuration_values
+  )
 }
 
 resource "aws_eks_addon" "this" {

@@ -110,6 +110,7 @@ For EC2 launch templates, `image_id` accepts either an AMI ID (`ami-*`) or an AM
 For launch template user data, you can set `user_data_file` to load content from a file path (relative to repo root or absolute path). Priority is `user_data_base64` > `user_data_file` > inline `user_data`.
 For launch template `vpc_security_groups`/`security_groups`, interpolation is supported via `templatestring()`. You can reference `${security_group["<name>"]}` and `${cluster["<eks-cluster-name>"].security_group_id}` (alias: `${eks_cluster["<eks-cluster-name>"].security_group_id}`).
 When a launch template references `cluster.*.security_group_id`, Terraform resolves the EKS cluster first and then creates the launch template, so EKS node groups can safely consume it.
+For EKS node groups, `launch_template.version` accepts explicit versions as well as `$Latest`/`$Default`; symbolic values are resolved to numeric versions to avoid perpetual plan drift.
 
 ### 4. Initialize and Validate
 
@@ -262,6 +263,7 @@ Owns extended EKS functionality:
 - IRSA Roles
 - Helm Releases
 - Kubernetes Storage Classes
+- Kubernetes Deployments
 - EKS Access Entries
 - Pod Identity Associations
 - Root orchestration passes EKS cluster/node group/add-on dependency signals into `eks-extended`, so Helm/Kubernetes operations are evaluated after cluster provisioning prerequisites.

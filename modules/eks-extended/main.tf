@@ -21,6 +21,11 @@ locals {
     "${storage_class.cluster}:${storage_class.name}:${idx}" => storage_class
   }
 
+  k8s_deployments = {
+    for idx, deployment in try(var.resources_by_type.k8s_deployments, []) :
+    "${deployment.cluster}:${deployment.name}:${idx}" => deployment
+  }
+
   k8s_target_cluster_names = tolist(toset(concat(
     [
       for _, release in local.eks_helm_releases :
@@ -29,6 +34,10 @@ locals {
     [
       for _, storage_class in local.k8s_storage_classes :
       storage_class.cluster
+    ],
+    [
+      for _, deployment in local.k8s_deployments :
+      deployment.cluster
     ]
   )))
 
@@ -243,7 +252,7 @@ resource "terraform_data" "eks_helm_single_cluster_guard" {
   lifecycle {
     precondition {
       condition     = length(local.k8s_target_cluster_names) <= 1
-      error_message = "eks_helm_releases and k8s_storage_classes currently support only one target cluster per spec apply."
+      error_message = "eks_helm_releases, k8s_storage_classes, and k8s_deployments currently support only one target cluster per spec apply."
     }
   }
 }
@@ -483,5 +492,84 @@ resource "kubernetes_storage_class_v1" "managed" {
     terraform_data.eks_helm_single_cluster_guard,
     aws_eks_access_entry.managed,
     aws_eks_access_policy_association.managed
+  ]
+}
+
+resource "kubernetes_deployment_v1" "managed" {
+  for_each = local.k8s_deployments
+
+  metadata {
+    name        = each.value.name
+    namespace   = try(each.value.namespace, "default")
+    labels      = try(each.value.labels, null)
+    annotations = try(each.value.annotations, null)
+  }
+
+  spec {
+    replicas = try(each.value.replicas, 1)
+
+    selector {
+      match_labels = try(each.value.selector_match_labels, { app = each.value.name })
+    }
+
+    template {
+      metadata {
+        labels = try(
+          each.value.pod_labels,
+          try(each.value.selector_match_labels, { app = each.value.name })
+        )
+        annotations = try(each.value.pod_annotations, null)
+      }
+
+      spec {
+        dynamic "container" {
+          for_each = try(each.value.containers, [])
+
+          content {
+            name              = container.value.name
+            image             = container.value.image
+            image_pull_policy = try(container.value.image_pull_policy, null)
+            command           = try(container.value.command, null)
+            args              = try(container.value.args, null)
+
+            dynamic "port" {
+              for_each = try(container.value.ports, [])
+
+              content {
+                name           = try(port.value.name, null)
+                container_port = port.value.container_port
+                protocol       = try(port.value.protocol, null)
+              }
+            }
+
+            dynamic "env" {
+              for_each = try(container.value.env, [])
+
+              content {
+                name  = env.value.name
+                value = try(env.value.value, null)
+              }
+            }
+
+            dynamic "resources" {
+              for_each = try(container.value.resources, null) == null ? [] : [container.value.resources]
+
+              content {
+                limits   = try(resources.value.limits, null)
+                requests = try(resources.value.requests, null)
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  depends_on = [
+    terraform_data.eks_runtime_prerequisites,
+    terraform_data.eks_helm_single_cluster_guard,
+    aws_eks_access_entry.managed,
+    aws_eks_access_policy_association.managed,
+    helm_release.managed
   ]
 }

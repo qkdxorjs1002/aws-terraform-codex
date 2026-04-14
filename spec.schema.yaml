@@ -101,6 +101,8 @@ properties:
               $ref: "#/$defs/generic_resource_array"
             k8s_storage_classes:
               $ref: "#/$defs/generic_resource_array"
+            k8s_deployments:
+              $ref: "#/$defs/generic_resource_array"
             eks_irsa_roles:
               $ref: "#/$defs/generic_resource_array"
             eks_access_entries:

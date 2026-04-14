@@ -112,6 +112,7 @@ EC2 Launch Template의 `image_id`는 AMI ID(`ami-*`)뿐 아니라 AMI 이름도 
 Launch Template의 user data는 `user_data_file`로 파일 경로(저장소 루트 기준 상대경로 또는 절대경로)를 지정해 불러올 수 있습니다. 우선순위는 `user_data_base64` > `user_data_file` > 인라인 `user_data`입니다.
 Launch Template의 `vpc_security_groups`/`security_groups`는 `templatestring()` 보간을 지원합니다. `${security_group["<name>"]}`와 `${cluster["<eks-cluster-name>"].security_group_id}`(별칭: `${eks_cluster["<eks-cluster-name>"].security_group_id}`)를 사용할 수 있습니다.
 Launch Template에서 `cluster.*.security_group_id`를 참조하면 Terraform이 EKS 클러스터를 먼저 만든 뒤 Launch Template을 생성하므로, Node Group에서 안전하게 참조할 수 있습니다.
+EKS Node Group의 `launch_template.version`은 명시 버전뿐 아니라 `$Latest`/`$Default`도 받을 수 있으며, 반복 plan diff 방지를 위해 내부적으로 숫자 버전으로 해석됩니다.
 
 ### 4. 초기화 및 검증
 
@@ -266,6 +267,7 @@ EKS 확장 구성을 담당합니다.
 - IRSA Roles
 - Helm Releases
 - Kubernetes Storage Classes
+- Kubernetes Deployments
 - EKS Access Entries
 - Pod Identity Associations
 - 루트 오케스트레이션은 EKS cluster/node group/add-on 의존 신호를 `eks-extended`로 전달하며, 이를 통해 Helm/Kubernetes 작업은 클러스터 프로비저닝 선행조건 이후에 평가됩니다.

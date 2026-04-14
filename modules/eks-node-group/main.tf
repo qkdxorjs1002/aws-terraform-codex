@@ -9,6 +9,24 @@ data "aws_iam_role" "node" {
 
 locals {
   effective_node_role_arn = local.use_role_lookup ? data.aws_iam_role.node[0].arn : var.node_role_arn
+
+  launch_template_version_raw = var.launch_template == null ? null : trimspace(var.launch_template.version)
+  launch_template_use_latest  = var.launch_template != null && lower(local.launch_template_version_raw) == "$latest"
+  launch_template_use_default = var.launch_template != null && lower(local.launch_template_version_raw) == "$default"
+  launch_template_use_lookup  = local.launch_template_use_latest || local.launch_template_use_default
+}
+
+data "aws_launch_template" "selected" {
+  count = local.launch_template_use_lookup ? 1 : 0
+  name  = var.launch_template.name
+}
+
+locals {
+  effective_launch_template_version = var.launch_template == null ? null : (
+    local.launch_template_use_latest ? tostring(data.aws_launch_template.selected[0].latest_version) :
+    local.launch_template_use_default ? tostring(data.aws_launch_template.selected[0].default_version) :
+    var.launch_template.version
+  )
 }
 
 resource "aws_eks_node_group" "this" {
@@ -36,7 +54,7 @@ resource "aws_eks_node_group" "this" {
 
     content {
       name    = launch_template.value.name
-      version = launch_template.value.version
+      version = local.effective_launch_template_version
     }
   }
 

@@ -530,7 +530,7 @@ project:
           disk_encryption: true
           launch_template:
             name: "<optional-launch-template-name>"
-            version: "<optional-launch-template-version>"
+            version: "<optional-launch-template-version>" # e.g. "1", "$Latest", "$Default"
           release_version: "<optional-eks-ami-release-version>"
           force_update_version: false
           labels:
@@ -670,6 +670,39 @@ project:
                   values:
                     - "<region>a"
                     - "<region>c"
+
+    # k8s_deployments:
+    # - name/cluster/namespace: Kubernetes Deployment identity and target cluster/namespace.
+    # - replicas: Desired pod replica count.
+    # - selector_match_labels/pod_labels: Selector labels and pod template labels.
+    # - containers[]: Container definitions (name, image, ports, env, resources).
+    - k8s_deployments:
+        - name: "nginx-test"
+          cluster: "<eks-cluster-name>"
+          namespace: "default"
+          replicas: 1
+          selector_match_labels:
+            app: "nginx-test"
+          pod_labels:
+            app: "nginx-test"
+          containers:
+            - name: "nginx"
+              image: "nginx:stable"
+              image_pull_policy: "IfNotPresent"
+              ports:
+                - name: "http"
+                  container_port: 80
+                  protocol: "TCP"
+              env:
+                - name: "TZ"
+                  value: "UTC"
+              resources:
+                requests:
+                  cpu: "100m"
+                  memory: "128Mi"
+                limits:
+                  cpu: "250m"
+                  memory: "256Mi"
 
     # eks_irsa_roles:
     # - name/cluster: IRSA role identity and cluster reference.
