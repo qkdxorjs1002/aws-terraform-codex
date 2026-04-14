@@ -108,6 +108,8 @@ For EKS Pod Identity associations, `role_arn` also accepts a role name (logical 
 
 For EC2 launch templates, `image_id` accepts either an AMI ID (`ami-*`) or an AMI name. If using an AMI name, you can set optional `image_owners` (default: `["self"]`) and `image_most_recent` (default: `true`) to control lookup behavior.
 For launch template user data, you can set `user_data_file` to load content from a file path (relative to repo root or absolute path). Priority is `user_data_base64` > `user_data_file` > inline `user_data`.
+For launch template `vpc_security_groups`/`security_groups`, interpolation is supported via `templatestring()`. You can reference `${security_group["<name>"]}` and `${cluster["<eks-cluster-name>"].security_group_id}` (alias: `${eks_cluster["<eks-cluster-name>"].security_group_id}`).
+When a launch template references `cluster.*.security_group_id`, Terraform resolves the EKS cluster first and then creates the launch template, so EKS node groups can safely consume it.
 
 ### 4. Initialize and Validate
 

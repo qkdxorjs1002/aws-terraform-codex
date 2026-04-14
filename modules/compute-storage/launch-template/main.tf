@@ -13,6 +13,43 @@ locals {
     for template_name, image_input in local.launch_template_image_inputs :
     template_name => length(regexall("^ami-[0-9a-fA-F]{8}([0-9a-fA-F]{9})?$", image_input)) > 0
   }
+
+  launch_template_security_group_inputs = {
+    for template_name, launch_template in local.ec2_launch_templates :
+    template_name => [
+      for security_group in try(launch_template.vpc_security_groups, try(launch_template.security_groups, [])) :
+      tostring(security_group)
+    ]
+  }
+
+  launch_template_uses_cluster_context = {
+    for template_name, security_groups in local.launch_template_security_group_inputs :
+    template_name => anytrue([
+      for security_group in security_groups :
+      length(regexall("\\$\\{\\s*(cluster|eks_cluster)\\[", security_group)) > 0
+    ])
+  }
+
+  launch_template_template_contexts = {
+    for template_name in keys(local.ec2_launch_templates) :
+    template_name => {
+      security_group = var.security_group_ids_by_name
+      cluster = local.launch_template_uses_cluster_context[template_name] ? var.eks_cluster_attributes_by_name : {}
+      eks_cluster = local.launch_template_uses_cluster_context[template_name] ? var.eks_cluster_attributes_by_name : {}
+    }
+  }
+
+  launch_template_resolved_security_group_ids = {
+    for template_name, security_groups in local.launch_template_security_group_inputs :
+    template_name => [
+      for security_group in security_groups :
+      lookup(
+        var.security_group_ids_by_name,
+        templatestring(security_group, local.launch_template_template_contexts[template_name]),
+        templatestring(security_group, local.launch_template_template_contexts[template_name])
+      )
+    ]
+  }
 }
 
 data "aws_ami" "launch_template_image_by_name" {
@@ -55,10 +92,7 @@ resource "aws_launch_template" "managed" {
   disable_api_termination               = try(each.value.termination_protection, null)
   instance_initiated_shutdown_behavior  = try(each.value.shutdown_behavior, null)
 
-  vpc_security_group_ids = [
-    for security_group in try(each.value.vpc_security_groups, try(each.value.security_groups, [])) :
-    lookup(var.security_group_ids_by_name, security_group, security_group)
-  ]
+  vpc_security_group_ids = local.launch_template_resolved_security_group_ids[each.key]
 
   user_data = (
     try(each.value.user_data_base64, null) != null ? each.value.user_data_base64 :

@@ -86,6 +86,24 @@ locals {
     name => mod.arn
   }
 
+  launch_templates_referencing_cluster_context = anytrue(flatten([
+    for launch_template in try(local.resources_by_type.ec2_launch_templates, []) : [
+      for security_group in try(launch_template.vpc_security_groups, try(launch_template.security_groups, [])) :
+      length(regexall("\\$\\{\\s*(cluster|eks_cluster)\\[", tostring(security_group))) > 0
+    ]
+  ]))
+
+  eks_cluster_attributes_by_name = local.launch_templates_referencing_cluster_context ? {
+    for name, mod in module.eks_clusters :
+    name => {
+      name              = mod.name
+      arn               = mod.arn
+      endpoint          = mod.endpoint
+      version           = mod.version
+      security_group_id = mod.cluster_security_group_id
+    }
+  } : {}
+
   eks_node_group_arns_by_name = {
     for name, mod in module.eks_node_groups :
     name => mod.arn

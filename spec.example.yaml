@@ -42,6 +42,9 @@ project:
           version: "1"
           description: "Launch template for EKS node group my-tst-tf-eks-ng-ap1"
           instance_type: "m6i.2xlarge"
+          security_groups:
+            - "my-tst-tf-eks-cls-sg-ap1"
+            - "${cluster[\"my-tst-tf-eks-ap1\"].security_group_id}"
           block_device_mappings:
             - device_name: "/dev/xvda"
               ebs:

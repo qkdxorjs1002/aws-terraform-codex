@@ -353,6 +353,10 @@ project:
     #   Priority is user_data_base64 > user_data_file > user_data.
     #   user_data_file is resolved from repository root (or absolute path).
     # - vpc_security_groups: Security groups by logical name or ID.
+    #   Supports templatestring() interpolation with:
+    #   ${security_group["<name>"]},
+    #   ${cluster["<eks-cluster-name>"].security_group_id}
+    #   (alias: ${eks_cluster["<eks-cluster-name>"].security_group_id})
     # - block_device_mappings[]: Optional EBS mapping defaults (encryption/size/type).
     # - update_default_version: Automatically promote each new version as default.
     - ec2_launch_templates:
@@ -371,6 +375,7 @@ project:
           monitoring: true
           vpc_security_groups:
             - "<security-group-name>"
+            - "${cluster[\"<eks-cluster-name>\"].security_group_id}"
           metadata_options:
             http_tokens: "required" # optional | required
             http_endpoint: "enabled" # enabled | disabled

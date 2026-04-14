@@ -19,6 +19,7 @@ module "launch_template" {
 
   resources_by_type          = var.resources_by_type
   security_group_ids_by_name = var.security_group_ids_by_name
+  eks_cluster_attributes_by_name = var.eks_cluster_attributes_by_name
 }
 
 module "alb" {

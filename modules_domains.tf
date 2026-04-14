@@ -22,6 +22,7 @@ module "compute_storage" {
   vpc_ids_by_name            = local.vpc_ids_by_name
   subnet_ids_by_name         = local.subnet_ids_by_name
   security_group_ids_by_name = local.security_group_ids_by_name
+  eks_cluster_attributes_by_name = local.eks_cluster_attributes_by_name
 
   depends_on = [
     module.vpcs,
