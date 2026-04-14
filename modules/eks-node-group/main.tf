@@ -1,5 +1,5 @@
 locals {
-  use_role_lookup = var.node_role_arn == null || trimspace(var.node_role_arn) == ""
+  use_role_lookup = var.node_role_name != null && trimspace(var.node_role_name) != ""
 }
 
 data "aws_iam_role" "node" {

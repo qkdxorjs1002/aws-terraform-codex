@@ -1,5 +1,5 @@
 locals {
-  use_role_lookup = var.cluster_role_arn == null || trimspace(var.cluster_role_arn) == ""
+  use_role_lookup = var.cluster_role_name != null && trimspace(var.cluster_role_name) != ""
 }
 
 data "aws_iam_role" "cluster" {

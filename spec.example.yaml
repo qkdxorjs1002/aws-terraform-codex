@@ -13,10 +13,6 @@ project:
           assume_role_policy: '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"eks.amazonaws.com"},"Action":"sts:AssumeRole"}]}'
           policies:
             - "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
-          tags:
-            Name: "my-tst-tf-eks-cls-iam-role"
-            Environment: "tst"
-
         - name: "my-tst-tf-eks-nd-iam-role"
           description: "IAM role for EKS worker nodes"
           assume_role_policy: '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"ec2.amazonaws.com"},"Action":"sts:AssumeRole"}]}'
@@ -24,19 +20,11 @@ project:
             - "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
             - "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
             - "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
-          tags:
-            Name: "my-tst-tf-eks-nd-iam-role"
-            Environment: "tst"
-
         - name: "my-tst-tf-external-dns-pod-identity-role"
           description: "IAM role for EKS Pod Identity (external-dns)"
           assume_role_policy: '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"pods.eks.amazonaws.com"},"Action":["sts:AssumeRole","sts:TagSession"]}]}'
           policies:
             - "arn:aws:iam::aws:policy/AmazonRoute53ReadOnlyAccess"
-          tags:
-            Name: "my-tst-tf-external-dns-pod-identity-role"
-            Environment: "tst"
-
     - ec2_launch_templates:
         - name: "my-tst-tf-eks-ap1-lt"
           version: "1"
@@ -52,10 +40,6 @@ project:
                 volume_type: "gp3"
                 encrypted: true
                 delete_on_termination: true
-          tags:
-            Name: "my-tst-tf-eks-ap1-lt"
-            Environment: "tst"
-
     - vpcs:
         - name: "my-tst-tf-vpc-ap1"
           cidr: "10.80.0.0/16"
@@ -65,10 +49,6 @@ project:
           enable_dns_hostnames: true
           instance_tenancy: "default"
           assign_generated_ipv6_cidr_block: false
-          tags:
-            Name: "my-tst-tf-vpc-ap1"
-            Environment: "tst"
-
     - subnets:
         - name: "my-tst-tf-sbn-pub-ap1a"
           vpc: "my-tst-tf-vpc-ap1"
@@ -77,9 +57,7 @@ project:
           map_public_ip_on_launch: false
           assign_ipv6_address_on_creation: false
           tags:
-            Name: "my-tst-tf-sbn-pub-ap1a"
             Tier: "public"
-            Environment: "tst"
 
         - name: "my-tst-tf-sbn-pub-ap1c"
           vpc: "my-tst-tf-vpc-ap1"
@@ -88,9 +66,7 @@ project:
           map_public_ip_on_launch: false
           assign_ipv6_address_on_creation: false
           tags:
-            Name: "my-tst-tf-sbn-pub-ap1c"
             Tier: "public"
-            Environment: "tst"
 
         - name: "my-tst-tf-sbn-pri-ap1a"
           vpc: "my-tst-tf-vpc-ap1"
@@ -99,9 +75,7 @@ project:
           map_public_ip_on_launch: false
           assign_ipv6_address_on_creation: false
           tags:
-            Name: "my-tst-tf-sbn-pri-ap1a"
             Tier: "private"
-            Environment: "tst"
 
         - name: "my-tst-tf-sbn-pri-ap1c"
           vpc: "my-tst-tf-vpc-ap1"
@@ -110,9 +84,7 @@ project:
           map_public_ip_on_launch: false
           assign_ipv6_address_on_creation: false
           tags:
-            Name: "my-tst-tf-sbn-pri-ap1c"
             Tier: "private"
-            Environment: "tst"
 
         - name: "my-tst-tf-sbn-pri-ap1a"
           vpc: "my-tst-tf-vpc-ap1"
@@ -121,9 +93,7 @@ project:
           map_public_ip_on_launch: false
           assign_ipv6_address_on_creation: false
           tags:
-            Name: "my-tst-tf-sbn-pri-ap1a"
             Tier: "private"
-            Environment: "tst"
 
         - name: "my-tst-tf-sbn-pri-ap1c"
           vpc: "my-tst-tf-vpc-ap1"
@@ -132,34 +102,20 @@ project:
           map_public_ip_on_launch: false
           assign_ipv6_address_on_creation: false
           tags:
-            Name: "my-tst-tf-sbn-pri-ap1c"
             Tier: "private"
-            Environment: "tst"
 
     - internet_gateways:
         - name: "my-tst-tf-igw-ap1"
           vpc: "my-tst-tf-vpc-ap1"
-          tags:
-            Name: "my-tst-tf-igw-ap1"
-            Environment: "tst"
-
     - nat_gateways:
         - name: "my-tst-tf-nat-ap1a"
           vpc: "my-tst-tf-vpc-ap1"
           subnet: "my-tst-tf-sbn-pub-ap1a"
           connection_type: "public"
-          tags:
-            Name: "my-tst-tf-nat-ap1a"
-            Environment: "tst"
-
         - name: "my-tst-tf-nat-ap1c"
           vpc: "my-tst-tf-vpc-ap1"
           subnet: "my-tst-tf-sbn-pub-ap1c"
           connection_type: "public"
-          tags:
-            Name: "my-tst-tf-nat-ap1c"
-            Environment: "tst"
-
     - route_tables:
         - name: "my-tst-tf-rtb-pub-ap1"
           vpc: "my-tst-tf-vpc-ap1"
@@ -173,10 +129,6 @@ project:
               target:
                 type: "internet-gateway"
                 value: "my-tst-tf-igw-ap1"
-          tags:
-            Name: "my-tst-tf-rtb-pub-ap1"
-            Environment: "tst"
-
         - name: "my-tst-tf-rtb-pri-ap1a"
           vpc: "my-tst-tf-vpc-ap1"
           associated_subnets:
@@ -188,10 +140,6 @@ project:
               target:
                 type: "nat-gateway"
                 value: "my-tst-tf-nat-ap1a"
-          tags:
-            Name: "my-tst-tf-rtb-pri-ap1a"
-            Environment: "tst"
-
         - name: "my-tst-tf-rtb-pod-ap1a"
           vpc: "my-tst-tf-vpc-ap1"
           associated_subnets:
@@ -203,10 +151,6 @@ project:
               target:
                 type: "nat-gateway"
                 value: "my-tst-tf-nat-ap1c"
-          tags:
-            Name: "my-tst-tf-rtb-pri-ap1c"
-            Environment: "tst"
-
         - name: "my-tst-tf-rtb-pod-ap1c"
           vpc: "my-tst-tf-vpc-ap1"
           associated_subnets:
@@ -218,10 +162,6 @@ project:
               target:
                 type: "nat-gateway"
                 value: "my-tst-tf-nat-ap1c"
-          tags:
-            Name: "my-tst-tf-rtb-pri-ap1c"
-            Environment: "tst"
-
     - security_groups:
         - name: "my-tst-tf-eks-cls-sg-ap1"
           vpc: "my-tst-tf-vpc-ap1"
@@ -254,10 +194,6 @@ project:
               destination:
                 type: "ip"
                 value: "0.0.0.0/0"
-          tags:
-            Name: "my-tst-tf-eks-cls-sg-ap1"
-            Environment: "tst"
-
         - name: "my-tst-tf-eks-pod-sg-ap1"
           vpc: "my-tst-tf-vpc-ap1"
           revoke_rules_on_delete: false
@@ -270,10 +206,6 @@ project:
               destination:
                 type: "ip"
                 value: "0.0.0.0/0"
-          tags:
-            Name: "my-tst-tf-eks-pod-sg-ap1"
-            Environment: "tst"
-
     - vpc_endpoints:
         - name: "my-tst-tf-vpce-ec2-ap1"
           vpc: "my-tst-tf-vpc-ap1"
@@ -286,10 +218,6 @@ project:
             - "my-tst-tf-sbn-pri-ap1c"
           security_groups:
             - "my-tst-tf-eks-cls-sg-ap1"
-          tags:
-            Name: "my-tst-tf-vpce-ec2-ap1"
-            Environment: "tst"
-
         - name: "my-tst-tf-vpce-ecr-api-ap1"
           vpc: "my-tst-tf-vpc-ap1"
           service: "com.amazonaws.ap-southeast-1.ecr.api"
@@ -301,10 +229,6 @@ project:
             - "my-tst-tf-sbn-pri-ap1c"
           security_groups:
             - "my-tst-tf-eks-cls-sg-ap1"
-          tags:
-            Name: "my-tst-tf-vpce-ecr-api-ap1"
-            Environment: "tst"
-
         - name: "my-tst-tf-vpce-ecr-dkr-ap1"
           vpc: "my-tst-tf-vpc-ap1"
           service: "com.amazonaws.ap-southeast-1.ecr.dkr"
@@ -316,10 +240,6 @@ project:
             - "my-tst-tf-sbn-pri-ap1c"
           security_groups:
             - "my-tst-tf-eks-cls-sg-ap1"
-          tags:
-            Name: "my-tst-tf-vpce-ecr-dkr-ap1"
-            Environment: "tst"
-
         - name: "my-tst-tf-vpce-sts-ap1"
           vpc: "my-tst-tf-vpc-ap1"
           service: "com.amazonaws.ap-southeast-1.sts"
@@ -331,10 +251,6 @@ project:
             - "my-tst-tf-sbn-pri-ap1c"
           security_groups:
             - "my-tst-tf-eks-cls-sg-ap1"
-          tags:
-            Name: "my-tst-tf-vpce-sts-ap1"
-            Environment: "tst"
-
         - name: "my-tst-tf-vpce-logs-ap1"
           vpc: "my-tst-tf-vpc-ap1"
           service: "com.amazonaws.ap-southeast-1.logs"
@@ -346,10 +262,6 @@ project:
             - "my-tst-tf-sbn-pri-ap1c"
           security_groups:
             - "my-tst-tf-eks-cls-sg-ap1"
-          tags:
-            Name: "my-tst-tf-vpce-logs-ap1"
-            Environment: "tst"
-
         - name: "my-tst-tf-vpce-s3-ap1"
           vpc: "my-tst-tf-vpc-ap1"
           service: "com.amazonaws.ap-southeast-1.s3"
@@ -359,10 +271,6 @@ project:
             - "my-tst-tf-rtb-pri-ap1a"
             - "my-tst-tf-rtb-pod-ap1a"
             - "my-tst-tf-rtb-pod-ap1c"
-          tags:
-            Name: "my-tst-tf-vpce-s3-ap1"
-            Environment: "tst"
-
     - eks_clusters:
         - name: "my-tst-tf-eks-ap1"
           vpc: "my-tst-tf-vpc-ap1"
@@ -387,10 +295,6 @@ project:
             log_retention_days: 30
           iam:
             cluster_role_name: "my-tst-tf-eks-cls-iam-role"
-          tags:
-            Name: "my-tst-tf-eks-ap1"
-            Environment: "tst"
-
     - eks_node_groups:
         - name: "my-tst-tf-eks-ng-ap1_1"
           cluster: "my-tst-tf-eks-ap1"
@@ -410,10 +314,6 @@ project:
           launch_template:
             name: "my-tst-tf-eks-ap1-lt"
             version: "1"
-          tags:
-            Name: "my-tst-tf-eks-ng-ap1"
-            Environment: "tst"
-
     - eks_addons:
         - name: "coredns"
           cluster: "my-tst-tf-eks-ap1"
@@ -483,10 +383,6 @@ project:
           managed_policies:
             - "arn:aws:iam::aws:policy/ElasticLoadBalancingFullAccess"
             - "arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess"
-          tags:
-            Name: "my-tst-tf-albc-irsa-role"
-            Environment: "tst"
-
         - name: "my-tst-tf-ca-irsa-role"
           cluster: "my-tst-tf-eks-ap1"
           namespace: "kube-system"
@@ -529,10 +425,6 @@ project:
                     }
                   ]
                 }
-          tags:
-            Name: "my-tst-tf-ca-irsa-role"
-            Environment: "tst"
-
     - eks_helm_releases:
         - name: "aws-load-balancer-controller"
           cluster: "my-tst-tf-eks-ap1"

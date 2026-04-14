@@ -27,9 +27,6 @@ project:
           inline_policies:
             - name: "<inline-policy-name>"
               document_json: "{}" # JSON string policy document
-          tags:
-            Environment: "<env>"
-
     # vpcs:
     # - name: Logical VPC identifier used by dependent resources.
     # - cidr: IPv4 CIDR range for the VPC.
@@ -43,9 +40,6 @@ project:
           enable_dns_hostnames: true
           instance_tenancy: "default" # default | dedicated
           assign_generated_ipv6_cidr_block: false
-          tags:
-            Environment: "<env>"
-
     # subnets:
     # - name: Logical subnet identifier.
     # - vpc: Parent VPC logical name.
@@ -60,7 +54,6 @@ project:
           assign_ipv6_address_on_creation: false
           tags:
             Tier: "private"
-            Environment: "<env>"
 
     # nat_gateways:
     # - name: Logical NAT Gateway identifier.
@@ -73,18 +66,12 @@ project:
           subnet: "<public-subnet-name>"
           connection_type: "public"
           allocation_id: "<optional-eip-allocation-id>"
-          tags:
-            Environment: "<env>"
-
     # internet_gateways:
     # - name: Logical Internet Gateway identifier.
     # - vpc: VPC logical name to attach the IGW.
     - internet_gateways:
         - name: "<igw-name>"
           vpc: "<vpc-name>"
-          tags:
-            Environment: "<env>"
-
     # route_tables:
     # - name: Logical route table identifier.
     # - vpc: Parent VPC logical name.
@@ -103,9 +90,6 @@ project:
               target:
                 type: "internet-gateway"
                 value: "<igw-name>"
-          tags:
-            Environment: "<env>"
-
     # network_acls:
     # - name: Logical network ACL identifier.
     # - vpc: Parent VPC logical name.
@@ -130,9 +114,6 @@ project:
               cidr_block: "0.0.0.0/0"
               from_port: 0
               to_port: 65535
-          tags:
-            Environment: "<env>"
-
     # security_groups:
     # - name: Logical security group identifier.
     # - vpc: Parent VPC logical name.
@@ -170,9 +151,6 @@ project:
               destination:
                 type: "security-group"
                 value: "<security-group-name-or-id>"
-          tags:
-            Environment: "<env>"
-
     # vpc_endpoints:
     # - name: Logical VPC endpoint identifier.
     # - vpc: Parent VPC logical name.
@@ -198,9 +176,6 @@ project:
             - "<security-group-name>"
           depends_on_vpc_endpoints:
             - "<vpc-endpoint-name>"
-          tags:
-            Environment: "<env>"
-
     # vpc_flow_logs:
     # - name: Logical flow log identifier.
     # - vpc: VPC logical name for traffic capture.
@@ -222,9 +197,6 @@ project:
             file_format: "plain-text" # plain-text | parquet
             hive_compatible_partitions: false
             per_hour_partition: false
-          tags:
-            Environment: "<env>"
-
     # rds_subnet_groups:
     # - name: Logical DB subnet group identifier.
     # - vpc: Parent VPC logical name.
@@ -240,9 +212,6 @@ project:
           subnets:
             - "<private-db-subnet-1>"
             - "<private-db-subnet-2>"
-          tags:
-            Environment: "<env>"
-
     # rds_instances:
     # - name/identifier: Logical and AWS DB identifiers.
     # - engine/engine_version: DB engine family and exact version.
@@ -294,9 +263,6 @@ project:
           copy_tags_to_snapshot: true
           auto_minor_version_upgrade: true
           enable_delete_protection: true
-          tags:
-            Environment: "<env>"
-
     # ec2_instances:
     # - name: Logical EC2 instance identifier.
     # - subnet/iam_role/security_groups: Network and IAM references.
@@ -340,9 +306,6 @@ project:
             instance_metadata_tags: "enabled" # enabled | disabled
           credit_specification:
             cpu_credits: "unlimited"
-          tags:
-            Environment: "<env>"
-
     # ec2_launch_templates:
     # - name: Logical launch template identifier.
     # - template_name: Optional AWS launch template name override (defaults to name).
@@ -387,8 +350,6 @@ project:
                 volume_size: 100
                 encrypted: true
                 delete_on_termination: true
-          tags:
-            Environment: "<env>"
           tag_specifications:
             instance:
               Environment: "<env>"
@@ -423,9 +384,6 @@ project:
               port: 80
               target_groups:
                 - "<target-group-name>"
-          tags:
-            Environment: "<env>"
-
     # ec2_alb_target_groups:
     # - name: Logical target group identifier.
     # - type/vpc/protocol/port: Target model and traffic settings.
@@ -450,9 +408,6 @@ project:
             timeout_seconds: 5
             interval_seconds: 30
             success_codes: 200
-          tags:
-            Environment: "<env>"
-
     # s3_buckets:
     # - name/namespace: Bucket name and naming scope guidance.
     # - object_ownership/bucket_versioning: Ownership and versioning behavior.
@@ -502,9 +457,6 @@ project:
             enabled: false
             target_bucket: "<access-log-bucket-name>"
             target_prefix: "s3-access-logs/"
-          tags:
-            Environment: "<env>"
-
     # eks_clusters:
     # - name/vpc/kubernetes_version: Cluster identity, network, and control plane version.
     # - endpoint_access.*: Private/public API access and allowed CIDRs.
@@ -546,10 +498,6 @@ project:
           iam:
             cluster_role_name: "<eks-cluster-role-name>"
             cluster_role_arn: "arn:aws:iam::<account-id>:role/<eks-cluster-role-name>"
-          tags:
-            Name: "<eks-cluster-name>"
-            Environment: "<env>"
-
     # eks_node_groups:
     # - name/cluster: Node group identity and parent EKS cluster reference.
     # - subnet_ids: Subnets where worker nodes are provisioned.
@@ -599,10 +547,6 @@ project:
             ec2_ssh_key: "<optional-keypair-name>"
             source_security_groups:
               - "<bastion-sg-name>"
-          tags:
-            Name: "<eks-nodegroup-name>"
-            Environment: "<env>"
-
     # eks_fargate_profiles:
     # - name/cluster: Fargate profile identity and parent cluster.
     # - subnet_ids: Subnets used for Fargate pod networking.
@@ -623,10 +567,6 @@ project:
             - namespace: "apps"
               labels:
                 run_on: "fargate"
-          tags:
-            Name: "<eks-fargate-profile-name>"
-            Environment: "<env>"
-
     # eks_addons:
     # - name: Managed EKS addon name.
     # - cluster: Parent EKS cluster logical name.
@@ -802,9 +742,6 @@ project:
               limit: 2000
               aggregate_key_type: "IP"
               action: "block" # allow | block | count
-          tags:
-            Environment: "<env>"
-
     # cloudfront_origin_access_controls:
     # - name/description: OAC identity and description.
     # - origin_type: Origin service type protected by OAC.
@@ -881,9 +818,6 @@ project:
             bucket: "<cloudfront-log-bucket>.s3.amazonaws.com"
             prefix: "cloudfront/"
             include_cookies: false
-          tags:
-            Environment: "<env>"
-
     # ecs_clusters:
     # - name: ECS cluster name.
     # - container_insights: Enables CloudWatch Container Insights.
@@ -904,9 +838,6 @@ project:
           default_capacity_provider_strategy:
             - capacity_provider: "FARGATE"
               weight: 1
-          tags:
-            Environment: "<env>"
-
     # ecs_task_definitions:
     # - family/cpu/memory/network_mode/requires_compatibilities: Core task runtime sizing and launch mode.
     # - execution_role_arn/task_role_arn: IAM roles for agent operations and app permissions.
@@ -950,9 +881,6 @@ project:
                   awslogs-group: "/ecs/<service-name>"
                   awslogs-region: "<region>"
                   awslogs-stream-prefix: "ecs"
-          tags:
-            Environment: "<env>"
-
     # ecs_services:
     # - name/cluster/task_definition_family: ECS service identity and deployment source.
     # - launch_type/desired_count/enable_execute_command/deployment_controller: Service runtime and deployment model.
@@ -999,9 +927,6 @@ project:
             max_capacity: 10
             cpu_target: 60
             memory_target: 70
-          tags:
-            Environment: "<env>"
-
     # cloudwatch_log_groups:
     # - name: CloudWatch Logs group name.
     # - retention_in_days: Log retention period in days.
@@ -1013,9 +938,6 @@ project:
           kms_key_id: "<optional-kms-key-id>"
           log_group_class: "STANDARD" # STANDARD | INFREQUENT_ACCESS
           skip_destroy: false
-          tags:
-            Environment: "<env>"
-
     # cloudwatch_metric_alarms:
     # - name/alarm_description: Alarm identity and operational description.
     # - namespace/metric_name/statistic/period: Metric source and aggregation behavior.
@@ -1085,9 +1007,6 @@ project:
           key_spec: "SYMMETRIC_DEFAULT" # SYMMETRIC_DEFAULT | HMAC_256 | HMAC_384 | HMAC_512
           multi_region: false
           policy: "{}" # JSON string key policy document
-          tags:
-            Environment: "<env>"
-
     # secrets_manager_secrets:
     # - name/description: Secret identity and description.
     # - kms_key_id: KMS key identifier used to encrypt secret values.
@@ -1107,9 +1026,6 @@ project:
             automatically_after_days: 30
           replica_regions:
             - "<region-2>"
-          tags:
-            Environment: "<env>"
-
     # ecr_repositories:
     # - name: ECR repository name.
     # - image_tag_mutability: Controls whether existing tags can be overwritten.
@@ -1128,9 +1044,6 @@ project:
           repository_policy: "{}" # JSON string repository policy document
           lifecycle_policy: "{}" # JSON string lifecycle policy document
           force_delete: false
-          tags:
-            Environment: "<env>"
-
     # lambda_functions:
     # - name/runtime/handler/architectures: Lambda identity and runtime entrypoint.
     # - package_type/filename/image_uri: Deployment artifact type and source.
@@ -1175,9 +1088,6 @@ project:
           dead_letter_target_arn: "arn:aws:sqs:<region>:<account-id>:<dlq-name>"
           tracing_mode: "Active" # Active | PassThrough
           log_retention_days: 30
-          tags:
-            Environment: "<env>"
-
     # api_gateway_http_apis:
     # - name/protocol_type/description: HTTP API identity and type.
     # - cors_configuration.*: Browser CORS behavior for API requests.
@@ -1206,9 +1116,6 @@ project:
           default_stage_access_log_settings:
             destination_arn: "arn:aws:logs:<region>:<account-id>:log-group:<log-group-name>"
             format: "{\"requestId\":\"$context.requestId\",\"ip\":\"$context.identity.sourceIp\",\"status\":\"$context.status\"}"
-          tags:
-            Environment: "<env>"
-
     # api_gateway_http_integrations:
     # - name/api: Integration identity and parent API reference.
     # - integration_type/integration_uri/integration_method: Backend connection type and target.
@@ -1252,9 +1159,6 @@ project:
           vpc_associations:
             - vpc: "<vpc-name>"
               region: "<region>"
-          tags:
-            Environment: "<env>"
-
     # route53_records:
     # - zone/name/type/ttl/records: DNS record placement, type, TTL, and literal values.
     # - alias.*: Alias target settings (used instead of records/ttl for alias records).
@@ -1294,9 +1198,6 @@ project:
           key_algorithm: "RSA_2048" # RSA_2048 | RSA_4096 | EC_prime256v1 | EC_secp384r1
           hosted_zone: "<domain>"
           transparency_logging_enabled: true
-          tags:
-            Environment: "<env>"
-
     # dynamodb_tables:
     # - name/billing_mode/hash_key/range_key: Table identity, billing model, and primary key schema.
     # - attributes[]: Attribute type definitions used by primary and secondary indexes.
@@ -1342,9 +1243,6 @@ project:
           server_side_encryption:
             enabled: true
             kms_key_arn: "arn:aws:kms:<region>:<account-id>:key/<kms-key-id>"
-          tags:
-            Environment: "<env>"
-
     # elasticache_replication_groups:
     # - replication_group_id/description: ElastiCache replication group identity.
     # - engine/engine_version/node_type/parameter_group_name/port: Redis engine and runtime profile.
@@ -1375,9 +1273,6 @@ project:
           snapshot_retention_limit: 7
           snapshot_window: "03:00-04:00"
           maintenance_window: "sun:18:00-sun:19:00"
-          tags:
-            Environment: "<env>"
-
     # sqs_queues:
     # - name/fifo_queue/content_based_deduplication: Queue type and deduplication behavior.
     # - delay_seconds/message_retention_seconds/visibility_timeout_seconds: Delivery timing controls.
@@ -1403,9 +1298,6 @@ project:
             target_queue_name: "<sqs-dlq-name>"
             max_receive_count: 5
           redrive_allow_policy: "{}" # JSON string
-          tags:
-            Environment: "<env>"
-
     # sns_topics:
     # - name/fifo_topic/content_based_deduplication: SNS topic identity and FIFO settings.
     # - kms_master_key_id: KMS key for topic encryption.
@@ -1418,9 +1310,6 @@ project:
           kms_master_key_id: "alias/<kms-key-alias>"
           policy: "{}" # JSON string topic policy document
           delivery_policy: "{}" # JSON string
-          tags:
-            Environment: "<env>"
-
     # sns_subscriptions:
     # - topic/protocol/endpoint: SNS subscription source and destination.
     # - raw_message_delivery: Whether payload is delivered without SNS envelope.
@@ -1445,9 +1334,6 @@ project:
           description: "<eventbridge-bus-description>"
           policy: "{}" # JSON string
           kms_key_identifier: "alias/<kms-key-alias>"
-          tags:
-            Environment: "<env>"
-
     # eventbridge_rules:
     # - name/event_bus_name/description: Rule identity and target event bus.
     # - schedule_expression/event_pattern/state: Trigger model (scheduled or pattern-based) and enablement.

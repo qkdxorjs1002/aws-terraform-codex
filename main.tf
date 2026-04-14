@@ -119,6 +119,8 @@ locals {
     name => mod.id
   }
 
+  managed_iam_role_names = toset(keys(module.network_identity.iam_role_arns_by_name))
+
   security_group_inbound_rules_using_logical_name = flatten([
     for security_group_name, security_group in local.security_groups : [
       for index, rule in try(security_group.inbound_rules, []) : {
@@ -160,6 +162,21 @@ locals {
         for security_group in try(cluster.security_groups, []) :
         lookup(local.security_group_ids_by_name, security_group, security_group)
       ]
+      iam = merge(
+        try(cluster.iam, {}),
+        {
+          cluster_role_arn = coalesce(
+            try(trimspace(cluster.iam.cluster_role_arn) != "" ? cluster.iam.cluster_role_arn : null, null),
+            contains(local.managed_iam_role_names, try(cluster.iam.cluster_role_name, "")) ?
+            module.network_identity.iam_role_arns_by_name[try(cluster.iam.cluster_role_name, "")] :
+            null
+          )
+          cluster_role_name = (
+            try(trimspace(cluster.iam.cluster_role_arn) != "", false) ||
+            contains(local.managed_iam_role_names, try(cluster.iam.cluster_role_name, ""))
+          ) ? null : try(cluster.iam.cluster_role_name, null)
+        }
+      )
     })
   }
 
@@ -170,6 +187,16 @@ locals {
         for subnet in node_group.subnet_ids :
         lookup(local.subnet_ids_by_name, subnet, subnet)
       ]
+      iam_role_arn = coalesce(
+        try(trimspace(node_group.iam_role_arn) != "" ? node_group.iam_role_arn : null, null),
+        contains(local.managed_iam_role_names, try(node_group.iam_role_name, "")) ?
+        module.network_identity.iam_role_arns_by_name[try(node_group.iam_role_name, "")] :
+        null
+      )
+      iam_role_name = (
+        try(trimspace(node_group.iam_role_arn) != "", false) ||
+        contains(local.managed_iam_role_names, try(node_group.iam_role_name, ""))
+      ) ? null : try(node_group.iam_role_name, null)
       launch_template = try(node_group.launch_template, null) == null ? null : merge(
         node_group.launch_template,
         {
@@ -427,7 +454,7 @@ module "eks_clusters" {
     try(each.value.tags, {})
   )
 
-  depends_on = [module.subnets, module.security_groups, module.network_identity]
+  depends_on = [module.subnets, module.security_groups]
 }
 
 module "eks_node_groups" {
@@ -468,7 +495,7 @@ module "eks_node_groups" {
     try(each.value.tags, {})
   )
 
-  depends_on = [module.eks_clusters, module.network_identity]
+  depends_on = [module.eks_clusters]
 }
 
 module "eks_addons" {
