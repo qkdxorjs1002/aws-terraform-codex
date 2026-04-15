@@ -47,10 +47,22 @@ locals {
         key         = "${role_name}:${inline_policy.name}"
         role_name   = role_name
         policy_name = inline_policy.name
-        policy_json = inline_policy.document_json
+        policy_json = (
+          try(trimspace(inline_policy.document_json), "") != "" ?
+          inline_policy.document_json :
+          data.http.iam_role_inline_policy_document[try(trimspace(inline_policy.document_url), "")].response_body
+        )
       }
     ]
   ])
+
+  iam_role_inline_policy_document_urls = toset(flatten([
+    for role in values(local.iam_roles) : [
+      for inline_policy in try(role.inline_policies, []) :
+      try(trimspace(inline_policy.document_url), "")
+      if try(trimspace(inline_policy.document_json), "") == "" && try(trimspace(inline_policy.document_url), "") != ""
+    ]
+  ]))
 
   network_acl_associations = flatten([
     for acl_name, acl in local.network_acls : [
@@ -65,6 +77,16 @@ locals {
   iam_role_arns_by_name = {
     for name, role in aws_iam_role.managed :
     name => role.arn
+  }
+}
+
+data "http" "iam_role_inline_policy_document" {
+  for_each = local.iam_role_inline_policy_document_urls
+
+  url = each.value
+
+  request_headers = {
+    Accept = "application/json"
   }
 }
 

@@ -469,6 +469,26 @@ locals {
           route_table      = local.route_table_ids_by_name
           nat_gateway      = local.nat_gateway_ids_by_name
           internet_gateway = local.internet_gateway_ids_by_name
+          cluster = {
+            for name, mod in module.eks_clusters :
+            name => {
+              name              = mod.name
+              arn               = mod.arn
+              endpoint          = mod.endpoint
+              version           = mod.version
+              security_group_id = mod.cluster_security_group_id
+            }
+          }
+          eks_cluster = {
+            for name, mod in module.eks_clusters :
+            name => {
+              name              = mod.name
+              arn               = mod.arn
+              endpoint          = mod.endpoint
+              version           = mod.version
+              security_group_id = mod.cluster_security_group_id
+            }
+          }
         }
       )
     })

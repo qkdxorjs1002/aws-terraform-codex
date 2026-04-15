@@ -27,6 +27,8 @@ project:
           inline_policies:
             - name: "<inline-policy-name>"
               document_json: "{}" # JSON string policy document
+              # or fetch policy JSON from URL:
+              # document_url: "https://example.com/policy.json"
     # vpcs:
     # - name: Logical VPC identifier used by dependent resources.
     # - cidr: IPv4 CIDR range for the VPC.
@@ -576,7 +578,9 @@ project:
     # - configuration_values: Addon-specific JSON configuration string.
     #   Supports runtime interpolation via templatestring() with maps:
     #   ${subnet["<name>"]}, ${security_group["<name>"]}, ${vpc["<name>"]},
-    #   ${route_table["<name>"]}, ${nat_gateway["<name>"]}, ${internet_gateway["<name>"]}
+    #   ${route_table["<name>"]}, ${nat_gateway["<name>"]}, ${internet_gateway["<name>"]},
+    #   ${cluster["<eks-cluster-name>"].security_group_id}
+    #   (alias: ${eks_cluster["<eks-cluster-name>"].security_group_id})
     - eks_addons:
         - name: "vpc-cni" # vpc-cni | coredns | kube-proxy | aws-ebs-csi-driver | eks-pod-identity-agent
           cluster: "<eks-cluster-name>"
@@ -712,7 +716,8 @@ project:
     # - oidc_provider_issuer_url: Optional OIDC issuer URL. If omitted, derived from cluster.
     # - namespace/service_account_name: Kubernetes service account binding target.
     # - managed_policies: Managed policy ARNs attached to IRSA role.
-    # - inline_policies[]: Inline policy documents (JSON) attached to the role.
+    # - inline_policies[]: Inline policy documents attached to the role.
+    #   Use either document_json or document_url.
     - eks_irsa_roles:
         - name: "<irsa-role-name>"
           cluster: "<eks-cluster-name>"
@@ -724,6 +729,8 @@ project:
           inline_policies:
             - name: "<inline-policy-name>"
               document_json: "{}" # JSON string policy document
+              # or fetch policy JSON from URL:
+              # document_url: "https://example.com/policy.json"
 
     # eks_access_entries:
     # - cluster: Target EKS cluster logical name.

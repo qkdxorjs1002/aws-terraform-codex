@@ -106,10 +106,12 @@ Resources that are not in Terraform state are not modified or deleted by Terrafo
 For `security_groups` rules, when `source.type`/`destination.type` is `security-group`, `value` can be either a logical security group name from the same spec or a literal security group ID (`sg-...`).
 
 For EKS Pod Identity associations, `role_arn` also accepts a role name (logical name from `iam_roles` or `eks_irsa_roles`) in addition to a literal ARN.
+For `iam_roles.inline_policies` and `eks_irsa_roles.inline_policies`, you can provide either `document_json` or `document_url` (for example `https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/refs/heads/main/docs/install/iam_policy.json`).
 
 For EC2 launch templates, `image_id` accepts either an AMI ID (`ami-*`) or an AMI name. If using an AMI name, you can set optional `image_owners` (default: `["self"]`) and `image_most_recent` (default: `true`) to control lookup behavior.
 For launch template user data, you can set `user_data_file` to load content from a file path (relative to repo root or absolute path). Priority is `user_data_base64` > `user_data_file` > inline `user_data`.
 For launch template `vpc_security_groups`/`security_groups`, interpolation is supported via `templatestring()`. You can reference `${security_group["<name>"]}` and `${cluster["<eks-cluster-name>"].security_group_id}` (alias: `${eks_cluster["<eks-cluster-name>"].security_group_id}`).
+For `eks_addons.configuration_values`, `templatestring()` interpolation also supports `${cluster["<eks-cluster-name>"].security_group_id}` (alias: `${eks_cluster["<eks-cluster-name>"].security_group_id}`) in addition to network maps such as `${subnet["<name>"]}` and `${security_group["<name>"]}`.
 When a launch template references `cluster.*.security_group_id`, Terraform resolves the EKS cluster first and then creates the launch template, so EKS node groups can safely consume it.
 For EKS node groups, `launch_template.version` accepts explicit versions as well as `$Latest`/`$Default`; symbolic values are resolved to numeric versions to avoid perpetual plan drift.
 For `eks_helm_releases` with private ECR OCI repositories (`oci://<account>.dkr.ecr.<region>.amazonaws.com/...`), the module automatically retrieves ECR auth tokens and injects Helm repository credentials.

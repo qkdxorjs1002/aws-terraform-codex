@@ -91,10 +91,22 @@ locals {
         key         = "${role_name}:${inline_policy.name}"
         role_name   = role_name
         policy_name = inline_policy.name
-        policy_json = inline_policy.document_json
+        policy_json = (
+          try(trimspace(inline_policy.document_json), "") != "" ?
+          inline_policy.document_json :
+          data.http.eks_irsa_inline_policy_document[try(trimspace(inline_policy.document_url), "")].response_body
+        )
       }
     ]
   ])
+
+  eks_irsa_inline_policy_document_urls = toset(flatten([
+    for role in values(local.eks_irsa_roles) : [
+      for inline_policy in try(role.inline_policies, []) :
+      try(trimspace(inline_policy.document_url), "")
+      if try(trimspace(inline_policy.document_json), "") == "" && try(trimspace(inline_policy.document_url), "") != ""
+    ]
+  ]))
 
   eks_irsa_oidc_issuer_by_role = {
     for role_name, role in local.eks_irsa_roles :
@@ -235,6 +247,16 @@ data "aws_ecr_authorization_token" "helm_oci_registry" {
   for_each = local.helm_ecr_oci_registry_ids
 
   registry_id = each.value
+}
+
+data "http" "eks_irsa_inline_policy_document" {
+  for_each = local.eks_irsa_inline_policy_document_urls
+
+  url = each.value
+
+  request_headers = {
+    Accept = "application/json"
+  }
 }
 
 provider "kubernetes" {
