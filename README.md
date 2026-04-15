@@ -106,6 +106,7 @@ Resources that are not in Terraform state are not modified or deleted by Terrafo
 For `security_groups` rules, when `source.type`/`destination.type` is `security-group`, `value` can be either a logical security group name from the same spec or a literal security group ID (`sg-...`).
 
 For EKS Pod Identity associations, `role_arn` also accepts a role name (logical name from `iam_roles` or `eks_irsa_roles`) in addition to a literal ARN.
+For roles used by EKS Pod Identity, the IAM trust policy principal must be `pods.eks.amazonaws.com` with `sts:AssumeRole` and `sts:TagSession`.
 For `iam_roles.inline_policies` and `eks_irsa_roles.inline_policies`, you can provide either `document_json` or `document_url` (for example `https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/refs/heads/main/docs/install/iam_policy.json`).
 
 For EC2 launch templates, `image_id` accepts either an AMI ID (`ami-*`) or an AMI name. If using an AMI name, you can set optional `image_owners` (default: `["self"]`) and `image_most_recent` (default: `true`) to control lookup behavior.

@@ -240,7 +240,7 @@ data "aws_eks_cluster" "helm_target" {
 
   name = local.k8s_target_cluster_name
 
-  depends_on = [terraform_data.eks_runtime_prerequisites]
+  depends_on = [terraform_data.eks_cluster_prerequisites]
 }
 
 data "aws_ecr_authorization_token" "helm_oci_registry" {
@@ -502,6 +502,11 @@ resource "helm_release" "managed" {
       value = set_sensitive.value.value
       type  = set_sensitive.value.type
     }
+  }
+
+  lifecycle {
+    # ECR OCI auth token rotates frequently and causes no-op in-place updates.
+    ignore_changes = [repository_password]
   }
 
   depends_on = [
