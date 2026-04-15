@@ -95,6 +95,7 @@ project:
 ```
 
 References are name-based. For example, a subnet points to `vpc: "main-vpc"` instead of a raw VPC ID, and the root module resolves that logical name to the created resource ID.
+When a referenced network resource is not managed by the current spec, Terraform looks up existing AWS resources by `Name` tag (security groups are looked up by group name) and resolves the reference to the real ID.
 
 `project.environment`, `project.managed_by`, and `project.maintainer` are required, and the root provider applies them as global tags to all taggable resources through `default_tags` (`Environment`, `ManagedBy`, `Maintainer`).
 
@@ -111,6 +112,7 @@ For launch template user data, you can set `user_data_file` to load content from
 For launch template `vpc_security_groups`/`security_groups`, interpolation is supported via `templatestring()`. You can reference `${security_group["<name>"]}` and `${cluster["<eks-cluster-name>"].security_group_id}` (alias: `${eks_cluster["<eks-cluster-name>"].security_group_id}`).
 When a launch template references `cluster.*.security_group_id`, Terraform resolves the EKS cluster first and then creates the launch template, so EKS node groups can safely consume it.
 For EKS node groups, `launch_template.version` accepts explicit versions as well as `$Latest`/`$Default`; symbolic values are resolved to numeric versions to avoid perpetual plan drift.
+For `eks_helm_releases` with private ECR OCI repositories (`oci://<account>.dkr.ecr.<region>.amazonaws.com/...`), the module automatically retrieves ECR auth tokens and injects Helm repository credentials.
 
 ### 4. Initialize and Validate
 

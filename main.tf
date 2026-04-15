@@ -4,8 +4,8 @@ locals {
   project = local.spec.project
 
   project_environment = trimspace(try(local.project.environment, try(local.project.env, "")))
-  project_managed_by = trimspace(try(local.project.managed_by, ""))
-  project_maintainer = trimspace(try(local.project.maintainer, ""))
+  project_managed_by  = trimspace(try(local.project.managed_by, ""))
+  project_maintainer  = trimspace(try(local.project.maintainer, ""))
   project_global_tags = merge(
     local.project_environment != "" ? { Environment = local.project_environment } : {},
     local.project_managed_by != "" ? { ManagedBy = local.project_managed_by } : {},
@@ -56,30 +56,265 @@ locals {
 
   security_group_names = toset(keys(local.security_groups))
 
-  vpc_ids_by_name = {
+  addon_configuration_value_strings = [
+    for addon in try(local.resources_by_type.eks_addons, []) :
+    try(addon.configuration_values, "")
+  ]
+
+  addon_subnet_reference_names = toset(flatten([
+    for configuration_values in local.addon_configuration_value_strings : [
+      for token in regexall("\\$\\{\\s*subnet\\[\\\"[^\\\"]+\\\"\\]\\s*\\}", configuration_values) :
+      regex("^\\$\\{\\s*subnet\\[\\\"([^\\\"]+)\\\"\\]\\s*\\}$", token)[0]
+    ]
+  ]))
+
+  addon_security_group_reference_names = toset(flatten([
+    for configuration_values in local.addon_configuration_value_strings : [
+      for token in regexall("\\$\\{\\s*security_group\\[\\\"[^\\\"]+\\\"\\]\\s*\\}", configuration_values) :
+      regex("^\\$\\{\\s*security_group\\[\\\"([^\\\"]+)\\\"\\]\\s*\\}$", token)[0]
+    ]
+  ]))
+
+  addon_vpc_reference_names = toset(flatten([
+    for configuration_values in local.addon_configuration_value_strings : [
+      for token in regexall("\\$\\{\\s*vpc\\[\\\"[^\\\"]+\\\"\\]\\s*\\}", configuration_values) :
+      regex("^\\$\\{\\s*vpc\\[\\\"([^\\\"]+)\\\"\\]\\s*\\}$", token)[0]
+    ]
+  ]))
+
+  addon_route_table_reference_names = toset(flatten([
+    for configuration_values in local.addon_configuration_value_strings : [
+      for token in regexall("\\$\\{\\s*route_table\\[\\\"[^\\\"]+\\\"\\]\\s*\\}", configuration_values) :
+      regex("^\\$\\{\\s*route_table\\[\\\"([^\\\"]+)\\\"\\]\\s*\\}$", token)[0]
+    ]
+  ]))
+
+  addon_nat_gateway_reference_names = toset(flatten([
+    for configuration_values in local.addon_configuration_value_strings : [
+      for token in regexall("\\$\\{\\s*nat_gateway\\[\\\"[^\\\"]+\\\"\\]\\s*\\}", configuration_values) :
+      regex("^\\$\\{\\s*nat_gateway\\[\\\"([^\\\"]+)\\\"\\]\\s*\\}$", token)[0]
+    ]
+  ]))
+
+  addon_internet_gateway_reference_names = toset(flatten([
+    for configuration_values in local.addon_configuration_value_strings : [
+      for token in regexall("\\$\\{\\s*internet_gateway\\[\\\"[^\\\"]+\\\"\\]\\s*\\}", configuration_values) :
+      regex("^\\$\\{\\s*internet_gateway\\[\\\"([^\\\"]+)\\\"\\]\\s*\\}$", token)[0]
+    ]
+  ]))
+
+  vpc_lookup_names = toset([
+    for candidate in concat(
+      [for vpc in try(local.resources_by_type.vpcs, []) : try(vpc.name, null)],
+      [for subnet in try(local.resources_by_type.subnets, []) : try(subnet.vpc, null)],
+      [for internet_gateway in try(local.resources_by_type.internet_gateways, []) : try(internet_gateway.vpc, null)],
+      [for route_table in try(local.resources_by_type.route_tables, []) : try(route_table.vpc, null)],
+      [for security_group in try(local.resources_by_type.security_groups, []) : try(security_group.vpc, null)],
+      [for endpoint in try(local.resources_by_type.vpc_endpoints, []) : try(endpoint.vpc, null)],
+      [for network_acl in try(local.resources_by_type.network_acls, []) : try(network_acl.vpc, null)],
+      [for flow_log in try(local.resources_by_type.vpc_flow_logs, []) : try(flow_log.vpc, null)],
+      [for alb in try(local.resources_by_type.albs, []) : try(alb.vpc, null)],
+      [for cluster in try(local.resources_by_type.eks_clusters, []) : try(cluster.vpc, null)],
+      tolist(local.addon_vpc_reference_names)
+    ) :
+    trimspace(tostring(candidate))
+    if try(trimspace(tostring(candidate)) != "", false)
+  ])
+
+  subnet_lookup_names = toset([
+    for candidate in concat(
+      [for subnet in try(local.resources_by_type.subnets, []) : try(subnet.name, null)],
+      [for nat_gateway in try(local.resources_by_type.nat_gateways, []) : try(nat_gateway.subnet, null)],
+      flatten([for route_table in try(local.resources_by_type.route_tables, []) : try(route_table.associated_subnets, [])]),
+      flatten([for endpoint in try(local.resources_by_type.vpc_endpoints, []) : try(endpoint.subnets, [])]),
+      flatten([for network_acl in try(local.resources_by_type.network_acls, []) : try(network_acl.associated_subnets, [])]),
+      [for ec2 in try(local.resources_by_type.ec2_instances, []) : try(ec2.subnet, null)],
+      flatten([for rds in try(local.resources_by_type.rds_instances, []) : try(rds.subnets, [])]),
+      flatten([for cluster in try(local.resources_by_type.eks_clusters, []) : try(cluster.subnet_ids, [])]),
+      flatten([for node_group in try(local.resources_by_type.eks_node_groups, []) : try(node_group.subnet_ids, [])]),
+      flatten([for fargate_profile in try(local.resources_by_type.eks_fargate_profiles, []) : try(fargate_profile.subnet_ids, [])]),
+      flatten([for lambda_function in try(local.resources_by_type.lambda_functions, []) : try(lambda_function.vpc_config.subnet_ids, [])]),
+      flatten([for ecs_service in try(local.resources_by_type.ecs_services, []) : try(ecs_service.network_configuration.subnets, [])]),
+      tolist(local.addon_subnet_reference_names)
+    ) :
+    trimspace(tostring(candidate))
+    if try(trimspace(tostring(candidate)) != "", false)
+  ])
+
+  security_group_lookup_names = toset([
+    for candidate in concat(
+      [for security_group in try(local.resources_by_type.security_groups, []) : try(security_group.name, null)],
+      flatten([for cluster in try(local.resources_by_type.eks_clusters, []) : try(cluster.security_groups, [])]),
+      flatten([for node_group in try(local.resources_by_type.eks_node_groups, []) : try(node_group.remote_access.source_security_groups, [])]),
+      flatten([for endpoint in try(local.resources_by_type.vpc_endpoints, []) : try(endpoint.security_groups, [])]),
+      flatten([for ec2 in try(local.resources_by_type.ec2_instances, []) : try(ec2.security_groups, [])]),
+      flatten([for alb in try(local.resources_by_type.albs, []) : try(alb.security_groups, [])]),
+      flatten([for lambda_function in try(local.resources_by_type.lambda_functions, []) : try(lambda_function.vpc_config.security_group_ids, [])]),
+      flatten([for ecs_service in try(local.resources_by_type.ecs_services, []) : try(ecs_service.network_configuration.security_groups, [])]),
+      flatten([for launch_template in try(local.resources_by_type.ec2_launch_templates, []) : try(launch_template.vpc_security_groups, try(launch_template.security_groups, []))]),
+      tolist(local.addon_security_group_reference_names)
+    ) :
+    trimspace(tostring(candidate))
+    if try(trimspace(tostring(candidate)) != "", false)
+  ])
+
+  route_table_lookup_names = toset([
+    for candidate in concat(
+      [for route_table in try(local.resources_by_type.route_tables, []) : try(route_table.name, null)],
+      flatten([for endpoint in try(local.resources_by_type.vpc_endpoints, []) : try(endpoint.route_tables, [])]),
+      tolist(local.addon_route_table_reference_names)
+    ) :
+    trimspace(tostring(candidate))
+    if try(trimspace(tostring(candidate)) != "", false)
+  ])
+
+  nat_gateway_lookup_names = toset([
+    for candidate in concat(
+      [for nat_gateway in try(local.resources_by_type.nat_gateways, []) : try(nat_gateway.name, null)],
+      flatten([
+        for route_table in try(local.resources_by_type.route_tables, []) : [
+          for route in try(route_table.routes, []) :
+          try(route.target.value, null)
+          if try(route.target.type, "") == "nat-gateway"
+        ]
+      ]),
+      tolist(local.addon_nat_gateway_reference_names)
+    ) :
+    trimspace(tostring(candidate))
+    if try(trimspace(tostring(candidate)) != "", false)
+  ])
+
+  internet_gateway_lookup_names = toset([
+    for candidate in concat(
+      [for internet_gateway in try(local.resources_by_type.internet_gateways, []) : try(internet_gateway.name, null)],
+      flatten([
+        for route_table in try(local.resources_by_type.route_tables, []) : [
+          for route in try(route_table.routes, []) :
+          try(route.target.value, null)
+          if try(route.target.type, "") == "internet-gateway"
+        ]
+      ]),
+      tolist(local.addon_internet_gateway_reference_names)
+    ) :
+    trimspace(tostring(candidate))
+    if try(trimspace(tostring(candidate)) != "", false)
+  ])
+
+  iam_roles_defined = toset([
+    for iam_role in try(local.resources_by_type.iam_roles, []) :
+    iam_role.name
+  ])
+
+  iam_role_lookup_names = toset([
+    for candidate in concat(
+      [for cluster in try(local.resources_by_type.eks_clusters, []) : try(cluster.iam.cluster_role_name, null)],
+      [for node_group in try(local.resources_by_type.eks_node_groups, []) : try(node_group.iam_role_name, null)]
+    ) :
+    trimspace(tostring(candidate))
+    if try(trimspace(tostring(candidate)) != "", false)
+  ])
+
+  existing_vpc_lookup_names = toset([
+    for name in setsubtract(local.vpc_lookup_names, toset(keys(local.vpcs))) :
+    name
+    if length(regexall("^vpc-[0-9a-f]+$", lower(name))) == 0 && length(regexall("^\\$\\{", name)) == 0
+  ])
+
+  existing_subnet_lookup_names = toset([
+    for name in setsubtract(local.subnet_lookup_names, toset(keys(local.subnets))) :
+    name
+    if length(regexall("^subnet-[0-9a-f]+$", lower(name))) == 0 && length(regexall("^\\$\\{", name)) == 0
+  ])
+
+  existing_security_group_lookup_names = toset([
+    for name in setsubtract(local.security_group_lookup_names, toset(keys(local.security_groups))) :
+    name
+    if length(regexall("^sg-[0-9a-f]+$", lower(name))) == 0 && length(regexall("^\\$\\{", name)) == 0
+  ])
+
+  existing_route_table_lookup_names = toset([
+    for name in setsubtract(local.route_table_lookup_names, toset(keys(local.route_tables))) :
+    name
+    if length(regexall("^rtb-[0-9a-f]+$", lower(name))) == 0 && length(regexall("^\\$\\{", name)) == 0
+  ])
+
+  existing_nat_gateway_lookup_names = toset([
+    for name in setsubtract(local.nat_gateway_lookup_names, toset(keys(local.nat_gateways))) :
+    name
+    if length(regexall("^nat-[0-9a-f]+$", lower(name))) == 0 && length(regexall("^\\$\\{", name)) == 0
+  ])
+
+  existing_internet_gateway_lookup_names = toset([
+    for name in setsubtract(local.internet_gateway_lookup_names, toset(keys(local.internet_gateways))) :
+    name
+    if length(regexall("^igw-[0-9a-f]+$", lower(name))) == 0 && length(regexall("^\\$\\{", name)) == 0
+  ])
+
+  existing_iam_role_lookup_names = toset([
+    for name in setsubtract(local.iam_role_lookup_names, local.iam_roles_defined) :
+    name
+    if length(regexall("^arn:", lower(name))) == 0
+  ])
+
+  existing_vpc_ids_by_name = {
+    for name, existing_vpc in data.aws_vpc.existing_by_name :
+    name => existing_vpc.id
+  }
+
+  existing_subnet_ids_by_name = {
+    for name, existing_subnet in data.aws_subnet.existing_by_name :
+    name => existing_subnet.id
+  }
+
+  existing_internet_gateway_ids_by_name = {
+    for name, existing_internet_gateway in data.aws_internet_gateway.existing_by_name :
+    name => existing_internet_gateway.id
+  }
+
+  existing_nat_gateway_ids_by_name = {
+    for name, existing_nat_gateway in data.aws_nat_gateway.existing_by_name :
+    name => existing_nat_gateway.id
+  }
+
+  existing_route_table_ids_by_name = {
+    for name, existing_route_table in data.aws_route_table.existing_by_name :
+    name => existing_route_table.id
+  }
+
+  existing_security_group_ids_by_name = {
+    for name, existing_security_group in data.aws_security_group.existing_by_name :
+    name => existing_security_group.id
+  }
+
+  existing_iam_role_arns_by_name = {
+    for name, existing_iam_role in data.aws_iam_role.existing_by_name :
+    name => existing_iam_role.arn
+  }
+
+  vpc_ids_by_name = merge(local.existing_vpc_ids_by_name, {
     for name, mod in module.vpcs :
     name => mod.id
-  }
+  })
 
-  subnet_ids_by_name = {
+  subnet_ids_by_name = merge(local.existing_subnet_ids_by_name, {
     for name, mod in module.subnets :
     name => mod.id
-  }
+  })
 
-  internet_gateway_ids_by_name = {
+  internet_gateway_ids_by_name = merge(local.existing_internet_gateway_ids_by_name, {
     for name, mod in module.internet_gateways :
     name => mod.id
-  }
+  })
 
-  nat_gateway_ids_by_name = {
+  nat_gateway_ids_by_name = merge(local.existing_nat_gateway_ids_by_name, {
     for name, mod in module.nat_gateways :
     name => mod.id
-  }
+  })
 
-  route_table_ids_by_name = {
+  route_table_ids_by_name = merge(local.existing_route_table_ids_by_name, {
     for name, mod in module.route_tables :
     name => mod.id
-  }
+  })
 
   eks_cluster_arns_by_name = {
     for name, mod in module.eks_clusters :
@@ -114,12 +349,14 @@ locals {
     name => mod.arn
   }
 
-  security_group_ids_by_name = {
+  security_group_ids_by_name = merge(local.existing_security_group_ids_by_name, {
     for name, mod in module.security_groups :
     name => mod.id
-  }
+  })
 
-  managed_iam_role_names = toset(keys(module.network_identity.iam_role_arns_by_name))
+  iam_role_arns_by_name = merge(local.existing_iam_role_arns_by_name, module.network_identity.iam_role_arns_by_name)
+
+  managed_iam_role_names = toset(keys(local.iam_role_arns_by_name))
 
   security_group_inbound_rules = flatten([
     for security_group_name, security_group in local.security_groups : [
@@ -167,11 +404,10 @@ locals {
       iam = merge(
         try(cluster.iam, {}),
         {
-          cluster_role_arn = coalesce(
-            try(trimspace(cluster.iam.cluster_role_arn) != "" ? cluster.iam.cluster_role_arn : null, null),
-            contains(local.managed_iam_role_names, try(cluster.iam.cluster_role_name, "")) ?
-            module.network_identity.iam_role_arns_by_name[try(cluster.iam.cluster_role_name, "")] :
-            null
+          cluster_role_arn = (
+            try(trimspace(cluster.iam.cluster_role_arn), "") != "" ?
+            cluster.iam.cluster_role_arn :
+            lookup(local.iam_role_arns_by_name, try(cluster.iam.cluster_role_name, ""), null)
           )
           cluster_role_name = (
             try(trimspace(cluster.iam.cluster_role_arn) != "", false) ||
@@ -189,11 +425,10 @@ locals {
         for subnet in node_group.subnet_ids :
         lookup(local.subnet_ids_by_name, subnet, subnet)
       ]
-      iam_role_arn = coalesce(
-        try(trimspace(node_group.iam_role_arn) != "" ? node_group.iam_role_arn : null, null),
-        contains(local.managed_iam_role_names, try(node_group.iam_role_name, "")) ?
-        module.network_identity.iam_role_arns_by_name[try(node_group.iam_role_name, "")] :
-        null
+      iam_role_arn = (
+        try(trimspace(node_group.iam_role_arn), "") != "" ?
+        node_group.iam_role_arn :
+        lookup(local.iam_role_arns_by_name, try(node_group.iam_role_name, ""), null)
       )
       iam_role_name = (
         try(trimspace(node_group.iam_role_arn) != "", false) ||
@@ -268,6 +503,61 @@ provider "aws" {
   default_tags {
     tags = local.project_global_tags
   }
+}
+
+data "aws_vpc" "existing_by_name" {
+  for_each = local.existing_vpc_lookup_names
+
+  filter {
+    name   = "tag:Name"
+    values = [each.value]
+  }
+}
+
+data "aws_subnet" "existing_by_name" {
+  for_each = local.existing_subnet_lookup_names
+
+  filter {
+    name   = "tag:Name"
+    values = [each.value]
+  }
+}
+
+data "aws_internet_gateway" "existing_by_name" {
+  for_each = local.existing_internet_gateway_lookup_names
+
+  filter {
+    name   = "tag:Name"
+    values = [each.value]
+  }
+}
+
+data "aws_nat_gateway" "existing_by_name" {
+  for_each = local.existing_nat_gateway_lookup_names
+
+  filter {
+    name   = "tag:Name"
+    values = [each.value]
+  }
+}
+
+data "aws_route_table" "existing_by_name" {
+  for_each = local.existing_route_table_lookup_names
+
+  filter {
+    name   = "tag:Name"
+    values = [each.value]
+  }
+}
+
+data "aws_security_group" "existing_by_name" {
+  for_each = local.existing_security_group_lookup_names
+  name     = each.value
+}
+
+data "aws_iam_role" "existing_by_name" {
+  for_each = local.existing_iam_role_lookup_names
+  name     = each.value
 }
 
 module "vpcs" {

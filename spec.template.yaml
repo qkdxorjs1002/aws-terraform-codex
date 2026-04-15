@@ -590,6 +590,9 @@ project:
     # eks_helm_releases:
     # - name/cluster: Helm release name and target EKS cluster.
     # - repository/chart/version: Helm chart source and optional fixed version.
+    #   For private ECR OCI charts, use repository as:
+    #   oci://<account-id>.dkr.ecr.<region>.amazonaws.com/<repo-path>
+    #   and Terraform will fetch ECR auth token automatically.
     # - namespace/create_namespace: Namespace target and namespace auto-create behavior.
     # - values: Optional YAML values string (templatestring-enabled).
     # - set[]/set_sensitive[]: Helm --set values (templatestring-enabled).

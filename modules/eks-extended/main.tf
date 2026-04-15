@@ -44,14 +44,23 @@ locals {
   k8s_target_cluster_name = length(local.k8s_target_cluster_names) == 0 ? null : local.k8s_target_cluster_names[0]
 
   eks_access_entries = {
-    for idx, entry in try(var.resources_by_type.eks_access_entries, []) :
-    "${entry.cluster}:${entry.principal_arn}:${idx}" => entry
+    for entry in try(var.resources_by_type.eks_access_entries, []) :
+    "${entry.cluster}:${entry.principal_arn}" => entry
   }
 
   eks_access_policy_associations = flatten([
     for entry_key, entry in local.eks_access_entries : [
-      for idx, policy_association in try(entry.policy_associations, []) : {
-        key           = "${entry_key}:${idx}"
+      for policy_association in try(entry.policy_associations, []) : {
+        key = format(
+          "%s:%s:%s:%s",
+          entry.cluster,
+          entry.principal_arn,
+          policy_association.policy_arn,
+          sha1(jsonencode({
+            type       = try(policy_association.access_scope.type, "cluster")
+            namespaces = sort(try(policy_association.access_scope.namespaces, []))
+          }))
+        )
         entry_key     = entry_key
         cluster_name  = entry.cluster
         principal_arn = entry.principal_arn
@@ -146,9 +155,9 @@ locals {
     for release_key, release in local.eks_helm_releases :
     release_key => [
       for set_item in try(release.set, []) : {
-        name = set_item.name
+        name  = set_item.name
         value = can(templatestring(set_item.value, local.helm_template_contexts_by_release[release_key])) ? templatestring(set_item.value, local.helm_template_contexts_by_release[release_key]) : tostring(set_item.value)
-        type = try(set_item.type, "auto")
+        type  = try(set_item.type, "auto")
       }
     ]
   }
@@ -157,14 +166,34 @@ locals {
     for release_key, release in local.eks_helm_releases :
     release_key => [
       for set_item in try(release.set_sensitive, []) : {
-        name = set_item.name
+        name  = set_item.name
         value = can(templatestring(set_item.value, local.helm_template_contexts_by_release[release_key])) ? templatestring(set_item.value, local.helm_template_contexts_by_release[release_key]) : tostring(set_item.value)
-        type = try(set_item.type, "auto")
+        type  = try(set_item.type, "auto")
       }
     ]
   }
 
-  aws_cli_profile_args          = try(trimspace(var.profile), "") != "" ? ["--profile", trimspace(var.profile)] : []
+  helm_ecr_oci_repository_pattern = "^oci://([0-9]{12})\\.dkr\\.ecr\\.[a-z0-9-]+\\.amazonaws\\.com(\\.cn)?(?:/.*)?$"
+
+  helm_ecr_oci_registry_id_by_release = {
+    for release_key, release in local.eks_helm_releases :
+    release_key => regex(local.helm_ecr_oci_repository_pattern, try(trimspace(release.repository), ""))[0]
+    if length(regexall(local.helm_ecr_oci_repository_pattern, try(trimspace(release.repository), ""))) > 0
+  }
+
+  helm_ecr_oci_registry_ids = toset(values(local.helm_ecr_oci_registry_id_by_release))
+
+  helm_repository_username_by_release = {
+    for release_key, registry_id in local.helm_ecr_oci_registry_id_by_release :
+    release_key => "AWS"
+  }
+
+  helm_repository_password_by_release = {
+    for release_key, registry_id in local.helm_ecr_oci_registry_id_by_release :
+    release_key => trimprefix(base64decode(data.aws_ecr_authorization_token.helm_oci_registry[registry_id].authorization_token), "AWS:")
+  }
+
+  aws_cli_profile_args           = try(trimspace(var.profile), "") != "" ? ["--profile", trimspace(var.profile)] : []
   k8s_exec_cluster_name_or_empty = coalesce(local.k8s_target_cluster_name, "")
 }
 
@@ -200,6 +229,12 @@ data "aws_eks_cluster" "helm_target" {
   name = local.k8s_target_cluster_name
 
   depends_on = [terraform_data.eks_runtime_prerequisites]
+}
+
+data "aws_ecr_authorization_token" "helm_oci_registry" {
+  for_each = local.helm_ecr_oci_registry_ids
+
+  registry_id = each.value
 }
 
 provider "kubernetes" {
@@ -357,7 +392,7 @@ resource "aws_eks_access_entry" "managed" {
 
   cluster_name      = each.value.cluster
   principal_arn     = each.value.principal_arn
-  kubernetes_groups = try(each.value.kubernetes_groups, [])
+  kubernetes_groups = try(each.value.kubernetes_groups, null)
   type              = try(each.value.type, "STANDARD")
 
   depends_on = [terraform_data.eks_cluster_prerequisites]
@@ -403,9 +438,11 @@ resource "aws_eks_pod_identity_association" "managed" {
 resource "helm_release" "managed" {
   for_each = local.eks_helm_releases
 
-  name       = each.value.name
-  repository = each.value.repository
-  chart      = each.value.chart
+  name                = each.value.name
+  repository          = each.value.repository
+  chart               = each.value.chart
+  repository_username = lookup(local.helm_repository_username_by_release, each.key, null)
+  repository_password = lookup(local.helm_repository_password_by_release, each.key, null)
 
   namespace        = try(each.value.namespace, "kube-system")
   version          = try(each.value.version, null)
