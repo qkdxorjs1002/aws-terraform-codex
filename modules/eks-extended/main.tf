@@ -26,6 +26,25 @@ locals {
     "${deployment.cluster}:${deployment.name}:${idx}" => deployment
   }
 
+  k8s_target_group_bindings = {
+    for idx, binding in try(var.resources_by_type.k8s_target_group_bindings, []) :
+    "${binding.cluster}:${binding.name}:${idx}" => binding
+  }
+
+  k8s_target_group_binding_cluster_names = toset([
+    for _, binding in local.k8s_target_group_bindings :
+    binding.cluster
+  ])
+
+  aws_load_balancer_controller_release_keys_for_bindings = toset([
+    for release_key, release in local.eks_helm_releases :
+    release_key
+    if contains(local.k8s_target_group_binding_cluster_names, release.cluster) && (
+      try(trimspace(release.name), "") == "aws-load-balancer-controller" ||
+      try(trimspace(release.chart), "") == "aws-load-balancer-controller"
+    )
+  ])
+
   k8s_target_cluster_names = tolist(toset(concat(
     [
       for _, release in local.eks_helm_releases :
@@ -38,6 +57,10 @@ locals {
     [
       for _, deployment in local.k8s_deployments :
       deployment.cluster
+    ],
+    [
+      for _, binding in local.k8s_target_group_bindings :
+      binding.cluster
     ]
   )))
 
@@ -309,7 +332,7 @@ resource "terraform_data" "eks_helm_single_cluster_guard" {
   lifecycle {
     precondition {
       condition     = length(local.k8s_target_cluster_names) <= 1
-      error_message = "eks_helm_releases, k8s_storage_classes, and k8s_deployments currently support only one target cluster per spec apply."
+      error_message = "eks_helm_releases, k8s_storage_classes, k8s_deployments, and k8s_target_group_bindings currently support only one target cluster per spec apply."
     }
   }
 }
@@ -472,6 +495,7 @@ resource "helm_release" "managed" {
 
   timeout           = try(each.value.timeout, 600)
   wait              = try(each.value.wait, true)
+  wait_for_jobs     = try(each.value.wait_for_jobs, false)
   atomic            = try(each.value.atomic, false)
   cleanup_on_fail   = try(each.value.cleanup_on_fail, false)
   dependency_update = try(each.value.dependency_update, false)
@@ -632,6 +656,71 @@ resource "kubernetes_deployment_v1" "managed" {
   depends_on = [
     terraform_data.eks_runtime_prerequisites,
     terraform_data.eks_helm_single_cluster_guard,
+    aws_eks_access_entry.managed,
+    aws_eks_access_policy_association.managed,
+    helm_release.managed
+  ]
+}
+
+resource "terraform_data" "target_group_binding_webhook_warmup" {
+  for_each = local.aws_load_balancer_controller_release_keys_for_bindings
+
+  input = {
+    cluster = local.eks_helm_releases[each.key].cluster
+    release = local.eks_helm_releases[each.key].name
+  }
+
+  provisioner "local-exec" {
+    command = "sleep 30"
+  }
+
+  depends_on = [
+    helm_release.managed
+  ]
+}
+
+resource "kubernetes_manifest" "target_group_binding" {
+  for_each = local.k8s_target_group_bindings
+
+  manifest = {
+    apiVersion = "elbv2.k8s.aws/v1beta1"
+    kind       = "TargetGroupBinding"
+    metadata = {
+      name        = each.value.name
+      namespace   = try(each.value.namespace, "default")
+      labels      = try(each.value.labels, null)
+      annotations = try(each.value.annotations, null)
+    }
+    spec = merge(
+      {
+        serviceRef = {
+          name = each.value.service_name
+          port = try(each.value.service_port, 80)
+        }
+      },
+      try(trimspace(tostring(each.value.target_group_arn)), "") != "" ? { targetGroupARN = each.value.target_group_arn } : {},
+      try(trimspace(tostring(each.value.target_group_name)), "") != "" ? { targetGroupName = each.value.target_group_name } : {},
+      try(trimspace(tostring(each.value.target_type)), "") != "" ? { targetType = each.value.target_type } : {},
+      try(trimspace(tostring(each.value.vpc_id)), "") != "" ? { vpcID = each.value.vpc_id } : {},
+      try(trimspace(tostring(each.value.ip_address_type)), "") != "" ? { ipAddressType = each.value.ip_address_type } : {},
+      try(each.value.networking, null) == null ? {} : { networking = each.value.networking }
+    )
+  }
+
+  lifecycle {
+    precondition {
+      condition = (
+        try(trimspace(tostring(each.value.target_group_arn)), "") != "" ||
+        try(trimspace(tostring(each.value.target_group_name)), "") != ""
+      )
+      error_message = "k8s_target_group_bindings requires either target_group_arn or target_group_name."
+    }
+  }
+
+  depends_on = [
+    terraform_data.eks_runtime_prerequisites,
+    terraform_data.eks_helm_single_cluster_guard,
+    terraform_data.target_group_binding_webhook_warmup,
     aws_eks_access_entry.managed,
     aws_eks_access_policy_association.managed,
     helm_release.managed

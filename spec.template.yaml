@@ -598,6 +598,7 @@ project:
     #   oci://<account-id>.dkr.ecr.<region>.amazonaws.com/<repo-path>
     #   and Terraform will fetch ECR auth token automatically.
     # - namespace/create_namespace: Namespace target and namespace auto-create behavior.
+    # - wait/wait_for_jobs/timeout: Helm readiness and install timeout controls.
     # - values: Optional YAML values string (templatestring-enabled).
     # - set[]/set_sensitive[]: Helm --set values (templatestring-enabled).
     # - templatestring context maps:
@@ -614,6 +615,7 @@ project:
           namespace: "kube-system"
           create_namespace: false
           wait: true
+          wait_for_jobs: true
           timeout: 600
           set:
             - name: "clusterName"
@@ -635,6 +637,7 @@ project:
           namespace: "kube-system"
           create_namespace: false
           wait: true
+          wait_for_jobs: false
           timeout: 600
           set:
             - name: "autoDiscovery.clusterName"
@@ -710,6 +713,31 @@ project:
                 limits:
                   cpu: "250m"
                   memory: "256Mi"
+
+    # k8s_target_group_bindings:
+    # - name/cluster/namespace: TargetGroupBinding identity and target cluster/namespace.
+    # - service_name/service_port: Kubernetes Service reference to bind traffic to.
+    # - target_group_arn or target_group_name: Existing AWS target group reference (one required).
+    # - target_type/ip_address_type/vpc_id/networking: Optional TargetGroupBinding spec fields.
+    - k8s_target_group_bindings:
+        - name: "nginx-test-tgb"
+          cluster: "<eks-cluster-name>"
+          namespace: "default"
+          service_name: "nginx-test"
+          service_port: 80
+          target_group_arn: "arn:aws:elasticloadbalancing:<region>:<account-id>:targetgroup/<target-group-name>/<target-group-id>"
+          target_type: "ip" # optional: instance | ip
+          # target_group_name: "<optional-target-group-name>"
+          # ip_address_type: "ipv4" # optional: ipv4 | ipv6
+          # vpc_id: "vpc-xxxxxxxx"
+          # networking:
+          #   ingress:
+          #     - from:
+          #         - securityGroup:
+          #             groupID: "sg-xxxxxxxx"
+          #       ports:
+          #         - protocol: "TCP"
+          #           port: 80
 
     # eks_irsa_roles:
     # - name/cluster: IRSA role identity and cluster reference.

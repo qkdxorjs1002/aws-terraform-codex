@@ -433,6 +433,7 @@ project:
           namespace: "kube-system"
           create_namespace: false
           wait: true
+          wait_for_jobs: true
           timeout: 600
           set:
             - name: "clusterName"
@@ -453,6 +454,7 @@ project:
           namespace: "kube-system"
           create_namespace: false
           wait: true
+          wait_for_jobs: false
           timeout: 600
           set:
             - name: "autoDiscovery.clusterName"
@@ -482,6 +484,15 @@ project:
             storageclass.kubernetes.io/is-default-class: "true"
           labels:
             app.kubernetes.io/managed-by: "terraform"
+
+    - k8s_target_group_bindings:
+        - name: "my-tst-tf-nginx-tgb"
+          cluster: "my-tst-tf-eks-ap1"
+          namespace: "default"
+          service_name: "nginx-test"
+          service_port: 80
+          target_group_name: "my-tst-tf-nginx-tg"
+          target_type: "ip"
 
     - eks_pod_identity_associations:
         - cluster: "my-tst-tf-eks-ap1"

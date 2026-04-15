@@ -118,6 +118,8 @@ Launch Template의 `vpc_security_groups`/`security_groups`는 `templatestring()`
 Launch Template에서 `cluster.*.security_group_id`를 참조하면 Terraform이 EKS 클러스터를 먼저 만든 뒤 Launch Template을 생성하므로, Node Group에서 안전하게 참조할 수 있습니다.
 EKS Node Group의 `launch_template.version`은 명시 버전뿐 아니라 `$Latest`/`$Default`도 받을 수 있으며, 반복 plan diff 방지를 위해 내부적으로 숫자 버전으로 해석됩니다.
 `eks_helm_releases`에서 private ECR OCI 저장소(`oci://<account>.dkr.ecr.<region>.amazonaws.com/...`)를 사용하면 모듈이 ECR 인증 토큰을 자동 조회해 Helm 저장소 인증 정보를 주입합니다.
+`eks_helm_releases`는 `wait_for_jobs`를 지원하며(특히 AWS Load Balancer Controller 권장), webhook 준비를 완료하는 chart Job까지 Helm이 대기하도록 설정할 수 있습니다.
+`k8s_target_group_bindings`는 `target_group_arn` 또는 `target_group_name` 중 하나를 지정해야 합니다. 모듈은 Kubernetes `TargetGroupBinding`(`elbv2.k8s.aws/v1beta1`) 리소스를 생성하며, AWS Load Balancer Controller CRD가 설치되어 있어야 합니다.
 
 ### 4. 초기화 및 검증
 
@@ -273,6 +275,7 @@ EKS 확장 구성을 담당합니다.
 - Helm Releases
 - Kubernetes Storage Classes
 - Kubernetes Deployments
+- Kubernetes TargetGroupBindings
 - EKS Access Entries
 - Pod Identity Associations
 - 루트 오케스트레이션은 EKS cluster/node group/add-on 의존 신호를 `eks-extended`로 전달하며, 이를 통해 Helm/Kubernetes 작업은 클러스터 프로비저닝 선행조건 이후에 평가됩니다.
