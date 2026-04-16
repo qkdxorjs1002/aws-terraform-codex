@@ -25,6 +25,12 @@ That gives us a few practical benefits:
 - a thinner root module that is easier to reason about
 - a more predictable place to extend support for new resource types
 
+## Workflow
+
+![AWS Terraform Codex Workflow](./images/aws-terraform-codex-workflow.svg)
+
+Spec definition and Terraform deployment are executed in this sequence, with an explicit iteration loop before apply when plan/review feedback requires updates.
+
 ## Quick Start
 
 ### 1. Prerequisites
@@ -96,31 +102,32 @@ project:
           cidr: "10.1.1.0/24"
 ```
 
-References are name-based. For example, a subnet points to `vpc: "main-vpc"` instead of a raw VPC ID, and the root module resolves that logical name to the created resource ID.
-When a referenced network resource is not managed by the current spec, Terraform looks up existing AWS resources by `Name` tag (security groups are looked up by group name) and resolves the reference to the real ID.
+Use this checklist while editing:
 
-`project.environment`, `project.managed_by`, and `project.maintainer` are required, and the root provider applies them as global tags to all taggable resources through `default_tags` (`Environment`, `ManagedBy`, `Maintainer`).
+#### Core Rules
 
-`Name` tags are applied automatically from each resource's logical identifier (for example `name`, `family`, `domain_name`, or `alias`), so you do not need to manually duplicate `tags.Name` in every spec block.
+- References are name-based. For example, use `vpc: "main-vpc"` instead of raw IDs.
+- If a referenced network resource is not managed in the current spec, Terraform resolves it from existing AWS resources by `Name` tag (security groups: group name lookup).
+- `project.environment`, `project.managed_by`, and `project.maintainer` are required. They are applied globally via provider `default_tags` as `Environment`, `ManagedBy`, and `Maintainer`.
+- `Name` tags are auto-derived from each resource logical identifier (`name`, `family`, `domain_name`, `alias`, and similar), so `tags.Name` usually should not be duplicated.
+- Resources not in Terraform state are not modified or deleted, even if they already exist in AWS.
+- For stricter guardrails, consider IAM/SCP controls that deny update/delete when `aws:ResourceTag/ManagedBy` does not match your project value.
+- For `security_groups` rules with `source.type`/`destination.type = security-group`, `value` can be either a logical security group name or a literal `sg-...` ID.
 
-Resources that are not in Terraform state are not modified or deleted by Terraform even if they already exist in AWS. For stronger protection at the permission layer, use IAM/SCP policies that deny update/delete actions when `aws:ResourceTag/ManagedBy` does not match your project value.
+#### Feature Notes
 
-For `security_groups` rules, when `source.type`/`destination.type` is `security-group`, `value` can be either a logical security group name from the same spec or a literal security group ID (`sg-...`).
-
-For EKS Pod Identity associations, `role_arn` also accepts a role name (logical name from `iam_roles` or `eks_irsa_roles`) in addition to a literal ARN.
-For roles used by EKS Pod Identity, the IAM trust policy principal must be `pods.eks.amazonaws.com` with `sts:AssumeRole` and `sts:TagSession`.
-For `iam_roles.inline_policies` and `eks_irsa_roles.inline_policies`, you can provide either `document_json` or `document_url` (for example `https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/refs/heads/main/docs/install/iam_policy.json`).
-
-For EC2 launch templates, `image_id` accepts either an AMI ID (`ami-*`) or an AMI name. If using an AMI name, you can set optional `image_owners` (default: `["self"]`) and `image_most_recent` (default: `true`) to control lookup behavior.
-For launch template user data, you can set `user_data_file` to load content from a file path (relative to repo root or absolute path). Priority is `user_data_base64` > `user_data_file` > inline `user_data`.
-For launch template `vpc_security_groups`/`security_groups`, interpolation is supported via `templatestring()`. You can reference `${security_group["<name>"]}` and `${cluster["<eks-cluster-name>"].security_group_id}` (alias: `${eks_cluster["<eks-cluster-name>"].security_group_id}`).
-For `eks_addons.configuration_values`, `templatestring()` interpolation also supports `${cluster["<eks-cluster-name>"].security_group_id}` (alias: `${eks_cluster["<eks-cluster-name>"].security_group_id}`) in addition to network maps such as `${subnet["<name>"]}` and `${security_group["<name>"]}`.
-When a launch template references `cluster.*.security_group_id`, Terraform resolves the EKS cluster first and then creates the launch template, so EKS node groups can safely consume it.
-For EKS node groups, `launch_template.version` accepts explicit versions as well as `$Latest`/`$Default`; symbolic values are resolved to numeric versions to avoid perpetual plan drift.
-For `eks_helm_releases` with private ECR OCI repositories (`oci://<account>.dkr.ecr.<region>.amazonaws.com/...`), the module automatically retrieves ECR auth tokens and injects Helm repository credentials.
-For `eks_helm_releases`, you can enable `wait_for_jobs` (recommended for AWS Load Balancer Controller) so Helm waits for chart jobs that finalize webhook readiness.
-For `eks_helm_releases`, you can set `image_pull_policy` as a shorthand for Helm `set` value `image.pullPolicy` (ignored if `set` already contains `image.pullPolicy`).
-For `k8s_target_group_bindings`, specify either `target_group_arn` or `target_group_name`. The module creates Kubernetes `TargetGroupBinding` resources (`elbv2.k8s.aws/v1beta1`) and assumes the AWS Load Balancer Controller CRDs are installed.
+- EKS Pod Identity: `role_arn` accepts either a literal ARN or a role name from `iam_roles`/`eks_irsa_roles`; the role trust principal must be `pods.eks.amazonaws.com` with `sts:AssumeRole` and `sts:TagSession`.
+- Inline IAM policies: `iam_roles.inline_policies` and `eks_irsa_roles.inline_policies` accept either `document_json` or `document_url` (for example `https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/refs/heads/main/docs/install/iam_policy.json`).
+- Launch templates AMI: `image_id` accepts either `ami-*` or an AMI name; AMI-name lookup can be tuned with `image_owners` (default `["self"]`) and `image_most_recent` (default `true`).
+- Launch templates user data: priority is `user_data_base64` > `user_data_file` > inline `user_data`; `user_data_file` supports repo-relative or absolute paths.
+- Launch templates interpolation: `vpc_security_groups`/`security_groups` support `templatestring()` with `${security_group["<name>"]}` and `${cluster["<eks-cluster-name>"].security_group_id}` (alias `${eks_cluster["<eks-cluster-name>"].security_group_id}`).
+- EKS add-ons interpolation: `eks_addons.configuration_values` supports the same cluster security-group interpolation, plus `${subnet["<name>"]}` and `${security_group["<name>"]}` maps.
+- EKS dependency ordering: if a launch template references `cluster.*.security_group_id`, the cluster is resolved first so node groups can consume the launch template safely.
+- EKS node groups: `launch_template.version` supports explicit versions plus `$Latest`/`$Default`, and symbolic versions are normalized to numeric versions to avoid persistent plan drift.
+- EKS Helm with private ECR OCI (`oci://<account>.dkr.ecr.<region>.amazonaws.com/...`): module auto-fetches ECR auth and injects Helm repository credentials.
+- EKS Helm jobs: `wait_for_jobs` is supported and recommended for charts like AWS Load Balancer Controller that rely on jobs for webhook readiness.
+- EKS Helm image pull policy: `image_pull_policy` is a shorthand for Helm `set` key `image.pullPolicy` (ignored when `set` already includes `image.pullPolicy`).
+- Kubernetes TargetGroupBinding: `k8s_target_group_bindings` must set either `target_group_arn` or `target_group_name`; module creates `elbv2.k8s.aws/v1beta1` `TargetGroupBinding` resources and expects AWS Load Balancer Controller CRDs.
 
 ### 4. Initialize and Validate
 

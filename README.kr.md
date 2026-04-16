@@ -27,6 +27,12 @@
 - 루트 구성이 얇아져 변경 영향도를 읽기 쉬워집니다.
 - 새 리소스를 추가할 때 어디를 수정해야 하는지 명확합니다.
 
+## 워크플로우
+
+![AWS Terraform Codex 워크플로우](./images/aws-terraform-codex-workflow.svg)
+
+스펙 정의부터 Terraform 배포까지의 기본 흐름을 나타내며, `plan`/리뷰 결과에 따라 `apply` 전에 `spec.yaml`을 갱신하는 반복 루프를 포함합니다.
+
 ## 빠른 시작
 
 ### 1. 사전 준비
@@ -98,31 +104,32 @@ project:
           cidr: "10.1.1.0/24"
 ```
 
-중요한 점은 참조가 이름 기반이라는 것입니다. 예를 들어 서브넷은 VPC의 실제 ID가 아니라 `vpc: "main-vpc"`처럼 논리 이름을 참조합니다. 루트 모듈이 이를 생성된 리소스 ID로 매핑합니다.
-현재 스펙에서 관리하지 않는 네트워크 리소스를 참조한 경우에도 Terraform이 기존 AWS 리소스를 `Name` 태그 기준으로 조회해 실제 ID로 매핑합니다(보안 그룹은 SG name 기준 조회).
+아래 체크리스트를 기준으로 스펙을 편집하면 가독성과 일관성을 유지하기 쉽습니다.
 
-`project.environment`, `project.managed_by`, `project.maintainer`는 필수이며, 루트 provider의 `default_tags`로 모든 태깅 가능한 리소스에 전역 적용됩니다(`Environment`, `ManagedBy`, `Maintainer`).
+#### 핵심 규칙
 
-`Name` 태그는 각 리소스의 논리 식별자(`name`, `family`, `domain_name`, `alias` 등)로 자동 적용되므로, 스펙마다 `tags.Name`를 반복 입력할 필요가 없습니다.
+- 참조는 이름 기반입니다. 예를 들어 raw ID 대신 `vpc: "main-vpc"`처럼 논리 이름을 사용합니다.
+- 현재 스펙에서 관리하지 않는 네트워크 리소스를 참조해도 Terraform이 기존 AWS 리소스를 `Name` 태그 기준으로 조회해 실제 ID로 매핑합니다(보안 그룹은 SG name 기준 조회).
+- `project.environment`, `project.managed_by`, `project.maintainer`는 필수입니다. 루트 provider의 `default_tags`를 통해 `Environment`, `ManagedBy`, `Maintainer`가 전역 적용됩니다.
+- `Name` 태그는 각 리소스의 논리 식별자(`name`, `family`, `domain_name`, `alias` 등)로 자동 적용되므로 `tags.Name`를 반복 입력할 필요가 없습니다.
+- Terraform state에 없는 AWS 리소스는 이미 존재해도 Terraform이 수정/삭제하지 않습니다.
+- 권한 레이어까지 강제하려면 `aws:ResourceTag/ManagedBy`가 프로젝트 값과 다를 때 update/delete를 거부하는 IAM/SCP 정책을 함께 고려하세요.
+- `security_groups` 규칙에서 `source.type`/`destination.type = security-group`일 때 `value`는 논리 SG 이름 또는 실제 SG ID(`sg-...`)를 사용할 수 있습니다.
 
-Terraform state에 없는 AWS 리소스는 이미 존재하더라도 Terraform이 수정/삭제하지 않습니다. 권한 레이어까지 강제하려면 `aws:ResourceTag/ManagedBy`가 프로젝트 값과 다를 때 update/delete를 거부하는 IAM/SCP 정책을 함께 사용하는 것을 권장합니다.
+#### 기능별 메모
 
-`security_groups` 규칙에서 `source.type`/`destination.type`이 `security-group`인 경우, `value`에는 같은 스펙 내 논리 SG 이름 또는 실제 SG ID(`sg-...`)를 사용할 수 있습니다.
-
-EKS Pod Identity association의 `role_arn`은 리터럴 ARN뿐 아니라 role 이름(`iam_roles` 또는 `eks_irsa_roles`의 논리 이름)도 입력할 수 있습니다.
-EKS Pod Identity에 사용하는 role의 IAM trust policy principal은 `pods.eks.amazonaws.com`이어야 하며 `sts:AssumeRole`, `sts:TagSession` 액션을 포함해야 합니다.
-`iam_roles.inline_policies`와 `eks_irsa_roles.inline_policies`는 `document_json` 또는 `document_url` 중 하나로 지정할 수 있습니다(예: `https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/refs/heads/main/docs/install/iam_policy.json`).
-
-EC2 Launch Template의 `image_id`는 AMI ID(`ami-*`)뿐 아니라 AMI 이름도 받을 수 있습니다. AMI 이름을 사용할 때는 `image_owners`(기본값: `["self"]`)와 `image_most_recent`(기본값: `true`)로 조회 동작을 제어할 수 있습니다.
-Launch Template의 user data는 `user_data_file`로 파일 경로(저장소 루트 기준 상대경로 또는 절대경로)를 지정해 불러올 수 있습니다. 우선순위는 `user_data_base64` > `user_data_file` > 인라인 `user_data`입니다.
-Launch Template의 `vpc_security_groups`/`security_groups`는 `templatestring()` 보간을 지원합니다. `${security_group["<name>"]}`와 `${cluster["<eks-cluster-name>"].security_group_id}`(별칭: `${eks_cluster["<eks-cluster-name>"].security_group_id}`)를 사용할 수 있습니다.
-`eks_addons.configuration_values`의 `templatestring()` 보간도 `${cluster["<eks-cluster-name>"].security_group_id}`(별칭: `${eks_cluster["<eks-cluster-name>"].security_group_id}`)를 지원하며, `${subnet["<name>"]}`, `${security_group["<name>"]}` 같은 네트워크 맵과 함께 사용할 수 있습니다.
-Launch Template에서 `cluster.*.security_group_id`를 참조하면 Terraform이 EKS 클러스터를 먼저 만든 뒤 Launch Template을 생성하므로, Node Group에서 안전하게 참조할 수 있습니다.
-EKS Node Group의 `launch_template.version`은 명시 버전뿐 아니라 `$Latest`/`$Default`도 받을 수 있으며, 반복 plan diff 방지를 위해 내부적으로 숫자 버전으로 해석됩니다.
-`eks_helm_releases`에서 private ECR OCI 저장소(`oci://<account>.dkr.ecr.<region>.amazonaws.com/...`)를 사용하면 모듈이 ECR 인증 토큰을 자동 조회해 Helm 저장소 인증 정보를 주입합니다.
-`eks_helm_releases`는 `wait_for_jobs`를 지원하며(특히 AWS Load Balancer Controller 권장), webhook 준비를 완료하는 chart Job까지 Helm이 대기하도록 설정할 수 있습니다.
-`eks_helm_releases`는 `image_pull_policy`를 Helm `set` 값 `image.pullPolicy`의 축약 필드로 지원합니다(`set`에 `image.pullPolicy`가 이미 있으면 무시).
-`k8s_target_group_bindings`는 `target_group_arn` 또는 `target_group_name` 중 하나를 지정해야 합니다. 모듈은 Kubernetes `TargetGroupBinding`(`elbv2.k8s.aws/v1beta1`) 리소스를 생성하며, AWS Load Balancer Controller CRD가 설치되어 있어야 합니다.
+- EKS Pod Identity: `role_arn`은 리터럴 ARN뿐 아니라 `iam_roles`/`eks_irsa_roles`의 role 이름도 지원합니다. Pod Identity role trust principal은 `pods.eks.amazonaws.com`이며 `sts:AssumeRole`, `sts:TagSession`을 포함해야 합니다.
+- Inline IAM policy: `iam_roles.inline_policies`, `eks_irsa_roles.inline_policies`는 `document_json` 또는 `document_url` 중 하나를 사용할 수 있습니다(예: `https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/refs/heads/main/docs/install/iam_policy.json`).
+- Launch Template AMI: `image_id`는 `ami-*` 또는 AMI 이름을 받을 수 있고, AMI 이름 조회는 `image_owners`(기본 `["self"]`), `image_most_recent`(기본 `true`)로 제어합니다.
+- Launch Template user data: 우선순위는 `user_data_base64` > `user_data_file` > 인라인 `user_data`이며, `user_data_file`은 저장소 루트 기준 상대경로/절대경로를 모두 지원합니다.
+- Launch Template 보간: `vpc_security_groups`/`security_groups`는 `templatestring()`으로 `${security_group["<name>"]}`, `${cluster["<eks-cluster-name>"].security_group_id}`(별칭 `${eks_cluster["<eks-cluster-name>"].security_group_id}`)를 참조할 수 있습니다.
+- EKS Add-on 보간: `eks_addons.configuration_values`도 위 cluster security-group 보간을 지원하며 `${subnet["<name>"]}`, `${security_group["<name>"]}`와 함께 사용할 수 있습니다.
+- EKS 의존성 순서: Launch Template이 `cluster.*.security_group_id`를 참조하면 Terraform이 EKS cluster를 먼저 해석한 뒤 Launch Template을 생성해 Node Group에서 안전하게 참조됩니다.
+- EKS Node Group 버전: `launch_template.version`은 명시 버전과 `$Latest`/`$Default`를 모두 지원하고, 반복 plan diff 방지를 위해 내부적으로 숫자 버전으로 정규화됩니다.
+- EKS Helm + private ECR OCI (`oci://<account>.dkr.ecr.<region>.amazonaws.com/...`): 모듈이 ECR 인증 토큰을 자동 조회해 Helm 저장소 인증 정보를 주입합니다.
+- EKS Helm Job 대기: `wait_for_jobs`를 지원하며 AWS Load Balancer Controller 같은 chart에서 webhook readiness Job 완료까지 대기할 수 있습니다.
+- EKS Helm 이미지 정책: `image_pull_policy`는 Helm `set`의 `image.pullPolicy` 축약 필드입니다(`set`에 `image.pullPolicy`가 이미 있으면 무시).
+- Kubernetes TargetGroupBinding: `k8s_target_group_bindings`는 `target_group_arn` 또는 `target_group_name` 중 하나가 필요하며, 모듈은 `elbv2.k8s.aws/v1beta1` `TargetGroupBinding` 리소스를 생성합니다(AWS Load Balancer Controller CRD 설치 필요).
 
 ### 4. 초기화 및 검증
 

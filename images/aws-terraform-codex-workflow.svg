@@ -1,0 +1,145 @@
+<svg width="1400" height="860" viewBox="0 0 1400 860" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">AWS Terraform Codex Workflow</title>
+  <desc id="desc">Spec definition to terraform deployment workflow diagram</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1400" y2="860" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#081421"/>
+      <stop offset="1" stop-color="#12354E"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#153A56"/>
+      <stop offset="1" stop-color="#0E2A3F"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFB74A"/>
+      <stop offset="1" stop-color="#FF7F2A"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#03070B" flood-opacity="0.45"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10V0Z" fill="#6ED5F5"/>
+    </marker>
+    <marker id="arrowAccent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10V0Z" fill="#FFAA45"/>
+    </marker>
+  </defs>
+
+  <rect width="1400" height="860" rx="26" fill="url(#bg)"/>
+  <rect x="20" y="20" width="1360" height="820" rx="20" stroke="#68D0F1" stroke-opacity="0.25"/>
+
+  <text x="80" y="92" fill="#F2FAFF" font-family="'Segoe UI', 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif" font-size="46" font-weight="700">
+    AWS Terraform Codex Workflow
+  </text>
+  <text x="80" y="132" fill="#A5DEEF" font-family="'Segoe UI', 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif" font-size="22" font-weight="500">
+    From spec definition to terraform deployment
+  </text>
+
+  <g opacity="0.18">
+    <rect x="1160" y="56" width="150" height="38" rx="19" fill="#15455F" stroke="#6ED5F5"/>
+    <text x="1202" y="81" fill="#AEEBFF" font-family="'Segoe UI', sans-serif" font-size="15" font-weight="600">spec-first</text>
+    <rect x="1160" y="104" width="150" height="38" rx="19" fill="#15455F" stroke="#6ED5F5"/>
+    <text x="1201" y="129" fill="#AEEBFF" font-family="'Segoe UI', sans-serif" font-size="15" font-weight="600">modular IaC</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="80" y="180" width="250" height="170" rx="16" fill="url(#panel)" stroke="#58C8EA"/>
+    <rect x="390" y="180" width="250" height="170" rx="16" fill="url(#panel)" stroke="#58C8EA"/>
+    <rect x="700" y="180" width="250" height="170" rx="16" fill="url(#panel)" stroke="#58C8EA"/>
+    <rect x="1010" y="180" width="250" height="170" rx="16" fill="url(#panel)" stroke="#58C8EA"/>
+
+    <rect x="1010" y="450" width="250" height="170" rx="16" fill="url(#panel)" stroke="#58C8EA"/>
+    <rect x="700" y="450" width="250" height="170" rx="16" fill="url(#panel)" stroke="#58C8EA"/>
+    <rect x="390" y="450" width="250" height="170" rx="16" fill="url(#panel)" stroke="#58C8EA"/>
+    <rect x="80" y="450" width="250" height="170" rx="16" fill="url(#panel)" stroke="#58C8EA"/>
+  </g>
+
+  <g fill="#FFAA45" font-family="'Segoe UI', sans-serif" font-size="20" font-weight="700">
+    <text x="104" y="220">01</text>
+    <text x="414" y="220">02</text>
+    <text x="724" y="220">03</text>
+    <text x="1034" y="220">04</text>
+    <text x="1034" y="490">05</text>
+    <text x="724" y="490">06</text>
+    <text x="414" y="490">07</text>
+    <text x="104" y="490">08</text>
+  </g>
+
+  <g fill="#F2FAFF" font-family="'Segoe UI', 'Noto Sans KR', sans-serif" font-size="26" font-weight="700">
+    <text x="104" y="258">Define</text>
+    <text x="104" y="288">Requirements</text>
+
+    <text x="414" y="258">Author</text>
+    <text x="414" y="288">spec.yaml</text>
+
+    <text x="724" y="258">Terraform Init</text>
+    <text x="724" y="288">Modules &amp; Providers</text>
+
+    <text x="1034" y="258">Terraform</text>
+    <text x="1034" y="288">Validate</text>
+
+    <text x="1034" y="528">Terraform Plan</text>
+
+    <text x="724" y="528">Review &amp;</text>
+    <text x="724" y="558">Approve Diff</text>
+
+    <text x="414" y="528">Terraform</text>
+    <text x="414" y="558">Apply</text>
+
+    <text x="104" y="528">Verify Outputs</text>
+    <text x="104" y="558">&amp; State</text>
+  </g>
+
+  <g fill="#A8DEEF" font-family="'Segoe UI', sans-serif" font-size="15" font-weight="500">
+    <text x="104" y="320">Map project goals to spec fields.</text>
+    <text x="414" y="320">Use template/example as baseline.</text>
+    <text x="724" y="320">terraform init -backend=false</text>
+    <text x="1034" y="320">Run syntax and graph checks.</text>
+    <text x="1034" y="590">Preview changes before apply.</text>
+    <text x="724" y="590">Align infra diff with requirements.</text>
+    <text x="414" y="590">Provision modular resources.</text>
+    <text x="104" y="590">Confirm outputs and drift status.</text>
+  </g>
+
+  <g stroke="#6ED5F5" stroke-width="4" marker-end="url(#arrow)">
+    <path d="M330 265H380"/>
+    <path d="M640 265H690"/>
+    <path d="M950 265H1000"/>
+    <path d="M1135 350V430"/>
+    <path d="M1010 535H960"/>
+    <path d="M700 535H650"/>
+    <path d="M390 535H340"/>
+  </g>
+
+  <g stroke="#FFAA45" stroke-width="4" stroke-dasharray="10 10" fill="none" marker-end="url(#arrowAccent)">
+    <path d="M700 640C700 706 636 748 548 748H260C170 748 120 704 120 630"/>
+    <path d="M640 520C780 520 860 440 860 362"/>
+    <path d="M860 362C860 330 780 290 640 290" marker-end="url(#arrowAccent)"/>
+  </g>
+
+  <g>
+    <rect x="80" y="690" width="560" height="118" rx="14" fill="#0D283C" stroke="#4EC2E6" stroke-opacity="0.7"/>
+    <text x="108" y="730" fill="#F6FBFF" font-family="'Segoe UI', 'Noto Sans KR', sans-serif" font-size="24" font-weight="700">
+      Iteration Loop
+    </text>
+    <text x="108" y="762" fill="#A8DEEF" font-family="'Segoe UI', 'Noto Sans KR', sans-serif" font-size="17" font-weight="500">
+      If the plan or review does not match intent,
+    </text>
+    <text x="108" y="786" fill="#A8DEEF" font-family="'Segoe UI', 'Noto Sans KR', sans-serif" font-size="17" font-weight="500">
+      update spec.yaml and validate again before apply.
+    </text>
+  </g>
+
+  <g>
+    <rect x="690" y="690" width="570" height="118" rx="14" fill="#261B0A" stroke="#FFAA45" stroke-opacity="0.82"/>
+    <text x="718" y="730" fill="#FFE4BF" font-family="'Segoe UI', 'Noto Sans KR', sans-serif" font-size="24" font-weight="700">
+      Deployment Rule
+    </text>
+    <text x="718" y="762" fill="#FFD7A3" font-family="'Segoe UI', 'Noto Sans KR', sans-serif" font-size="17" font-weight="500">
+      In this repository, Terraform code changes are checked
+    </text>
+    <text x="718" y="786" fill="#FFD7A3" font-family="'Segoe UI', 'Noto Sans KR', sans-serif" font-size="17" font-weight="500">
+      with terraform validate as the default verification gate.
+    </text>
+  </g>
+</svg>
