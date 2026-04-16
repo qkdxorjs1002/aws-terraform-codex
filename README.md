@@ -1,5 +1,7 @@
 # AWS Terraform Codex
 
+![AWS Terraform Codex Banner](./images/aws-terraform-codex-banner.svg)
+
 English documentation. 한국어 문서는 [`README.kr.md`](./README.kr.md)를 참고하세요.
 
 This repository defines AWS infrastructure from a spec-first workflow. Requirements are declared in `spec.yaml`, the root Terraform layer keeps orchestration thin, and domain modules own the actual resource implementation.

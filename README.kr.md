@@ -1,5 +1,7 @@
 # AWS Terraform Codex
 
+![AWS Terraform Codex 배너](./images/aws-terraform-codex-banner.svg)
+
 한국어 문서입니다. For English documentation, see [`README.md`](./README.md).
 
 스펙 중심으로 AWS 인프라를 정의하고, Terraform 모듈이 이를 해석해 프로비저닝하는 저장소입니다.

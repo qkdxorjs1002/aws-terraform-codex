@@ -1,0 +1,76 @@
+<svg width="1280" height="320" viewBox="0 0 1280 320" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">AWS Terraform Codex Banner</title>
+  <desc id="desc">Spec-driven infrastructure banner with cloud and terraform-inspired layers</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="320" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0B1B2B"/>
+      <stop offset="0.5" stop-color="#13324A"/>
+      <stop offset="1" stop-color="#1A4A63"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="240" y1="70" x2="460" y2="250" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFB547"/>
+      <stop offset="1" stop-color="#FF8A2A"/>
+    </linearGradient>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#57C4E5" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#2E8FB0" stop-opacity="0.05"/>
+    </linearGradient>
+    <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1280" height="320" rx="24" fill="url(#bg)"/>
+  <rect x="16" y="16" width="1248" height="288" rx="18" fill="none" stroke="#73D6F2" stroke-opacity="0.2"/>
+
+  <g opacity="0.22">
+    <path d="M0 260L210 190L440 260L650 170L880 250L1100 180L1280 230V320H0V260Z" fill="#62C4E6"/>
+    <path d="M0 290L200 230L430 295L670 215L900 285L1140 220L1280 255V320H0V290Z" fill="#1E6F8D"/>
+  </g>
+
+  <g opacity="0.18">
+    <rect x="860" y="40" width="72" height="72" rx="8" fill="url(#tile)"/>
+    <rect x="940" y="70" width="58" height="58" rx="8" fill="url(#tile)"/>
+    <rect x="1008" y="36" width="82" height="82" rx="8" fill="url(#tile)"/>
+    <rect x="1098" y="76" width="52" height="52" rx="8" fill="url(#tile)"/>
+    <rect x="1162" y="44" width="62" height="62" rx="8" fill="url(#tile)"/>
+  </g>
+
+  <g filter="url(#softGlow)">
+    <path d="M166 150C166 124 187 103 213 103C224 103 234 107 242 113C251 96 269 84 290 84C320 84 344 108 344 138H345C366 138 384 155 384 176C384 197 366 214 345 214H212C186 214 166 194 166 168V150Z" fill="#7CD6F3"/>
+    <path d="M293 110L333 133V179L293 202L253 179V133L293 110Z" fill="url(#accent)"/>
+    <path d="M293 110V156L333 179V133L293 110Z" fill="#FF9C39"/>
+    <path d="M293 156L253 179L293 202L333 179L293 156Z" fill="#FF7A1A"/>
+  </g>
+
+  <g>
+    <rect x="440" y="90" width="12" height="140" rx="6" fill="#7AD3ED" fill-opacity="0.55"/>
+    <rect x="466" y="90" width="12" height="140" rx="6" fill="#7AD3ED" fill-opacity="0.35"/>
+  </g>
+
+  <text x="510" y="150" fill="#F5FAFF" font-family="'Segoe UI', 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif" font-size="52" font-weight="700" letter-spacing="0.8">
+    AWS Terraform Codex
+  </text>
+  <text x="512" y="196" fill="#9EDBF0" font-family="'Segoe UI', 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif" font-size="24" font-weight="500" letter-spacing="0.3">
+    Spec-Driven Infrastructure as Code
+  </text>
+
+  <g opacity="0.9">
+    <rect x="509" y="216" width="132" height="34" rx="17" fill="#0E2A3D" stroke="#4BBCE0" stroke-opacity="0.65"/>
+    <text x="542" y="239" fill="#A8E9FF" font-family="'Segoe UI', 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif" font-size="15" font-weight="600">
+      Modular IaC
+    </text>
+    <rect x="654" y="216" width="118" height="34" rx="17" fill="#0E2A3D" stroke="#4BBCE0" stroke-opacity="0.65"/>
+    <text x="688" y="239" fill="#A8E9FF" font-family="'Segoe UI', 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif" font-size="15" font-weight="600">
+      AWS
+    </text>
+    <rect x="785" y="216" width="182" height="34" rx="17" fill="#0E2A3D" stroke="#4BBCE0" stroke-opacity="0.65"/>
+    <text x="817" y="239" fill="#A8E9FF" font-family="'Segoe UI', 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif" font-size="15" font-weight="600">
+      YAML Spec First
+    </text>
+  </g>
+</svg>
