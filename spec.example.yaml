@@ -435,6 +435,7 @@ project:
           wait: true
           wait_for_jobs: true
           timeout: 600
+          image_pull_policy: "IfNotPresent"
           set:
             - name: "clusterName"
               value: "${cluster_name}"
@@ -456,6 +457,7 @@ project:
           wait: true
           wait_for_jobs: false
           timeout: 600
+          image_pull_policy: "IfNotPresent"
           set:
             - name: "autoDiscovery.clusterName"
               value: "${cluster_name}"

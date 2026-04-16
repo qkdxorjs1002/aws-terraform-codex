@@ -188,13 +188,22 @@ locals {
 
   helm_rendered_set_by_release = {
     for release_key, release in local.eks_helm_releases :
-    release_key => [
-      for set_item in try(release.set, []) : {
-        name  = set_item.name
-        value = can(templatestring(set_item.value, local.helm_template_contexts_by_release[release_key])) ? templatestring(set_item.value, local.helm_template_contexts_by_release[release_key]) : tostring(set_item.value)
-        type  = try(set_item.type, "auto")
-      }
-    ]
+    release_key => concat(
+      [
+        for set_item in try(release.set, []) : {
+          name  = set_item.name
+          value = can(templatestring(set_item.value, local.helm_template_contexts_by_release[release_key])) ? templatestring(set_item.value, local.helm_template_contexts_by_release[release_key]) : tostring(set_item.value)
+          type  = try(set_item.type, "auto")
+        }
+      ],
+      try(trimspace(release.image_pull_policy), "") != "" && !contains([for set_item in try(release.set, []) : set_item.name], "image.pullPolicy") ? [
+        {
+          name  = "image.pullPolicy"
+          value = can(templatestring(release.image_pull_policy, local.helm_template_contexts_by_release[release_key])) ? templatestring(release.image_pull_policy, local.helm_template_contexts_by_release[release_key]) : tostring(release.image_pull_policy)
+          type  = "string"
+        }
+      ] : []
+    )
   }
 
   helm_rendered_set_sensitive_by_release = {

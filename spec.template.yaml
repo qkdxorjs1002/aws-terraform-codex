@@ -599,6 +599,8 @@ project:
     #   and Terraform will fetch ECR auth token automatically.
     # - namespace/create_namespace: Namespace target and namespace auto-create behavior.
     # - wait/wait_for_jobs/timeout: Helm readiness and install timeout controls.
+    # - image_pull_policy: Optional shorthand for Helm set image.pullPolicy.
+    #   (ignored when set[] already contains image.pullPolicy)
     # - values: Optional YAML values string (templatestring-enabled).
     # - set[]/set_sensitive[]: Helm --set values (templatestring-enabled).
     # - templatestring context maps:
@@ -617,6 +619,7 @@ project:
           wait: true
           wait_for_jobs: true
           timeout: 600
+          image_pull_policy: "IfNotPresent"
           set:
             - name: "clusterName"
               value: "${cluster_name}"
@@ -639,6 +642,7 @@ project:
           wait: true
           wait_for_jobs: false
           timeout: 600
+          image_pull_policy: "IfNotPresent"
           set:
             - name: "autoDiscovery.clusterName"
               value: "${cluster_name}"

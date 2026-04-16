@@ -117,6 +117,7 @@ When a launch template references `cluster.*.security_group_id`, Terraform resol
 For EKS node groups, `launch_template.version` accepts explicit versions as well as `$Latest`/`$Default`; symbolic values are resolved to numeric versions to avoid perpetual plan drift.
 For `eks_helm_releases` with private ECR OCI repositories (`oci://<account>.dkr.ecr.<region>.amazonaws.com/...`), the module automatically retrieves ECR auth tokens and injects Helm repository credentials.
 For `eks_helm_releases`, you can enable `wait_for_jobs` (recommended for AWS Load Balancer Controller) so Helm waits for chart jobs that finalize webhook readiness.
+For `eks_helm_releases`, you can set `image_pull_policy` as a shorthand for Helm `set` value `image.pullPolicy` (ignored if `set` already contains `image.pullPolicy`).
 For `k8s_target_group_bindings`, specify either `target_group_arn` or `target_group_name`. The module creates Kubernetes `TargetGroupBinding` resources (`elbv2.k8s.aws/v1beta1`) and assumes the AWS Load Balancer Controller CRDs are installed.
 
 ### 4. Initialize and Validate
