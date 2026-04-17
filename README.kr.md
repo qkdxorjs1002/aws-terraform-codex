@@ -40,6 +40,7 @@
 - Terraform `>= 1.5.0`
 - AWS Provider `>= 5.33.0`
 - 필요 시 AWS CLI 프로파일 설정
+- `k8s_target_group_bindings`를 사용할 경우 `kubectl` 설치
 
 루트 모듈은 아래 설정을 사용합니다.
 
@@ -115,6 +116,7 @@ project:
 - Terraform state에 없는 AWS 리소스는 이미 존재해도 Terraform이 수정/삭제하지 않습니다.
 - 권한 레이어까지 강제하려면 `aws:ResourceTag/ManagedBy`가 프로젝트 값과 다를 때 update/delete를 거부하는 IAM/SCP 정책을 함께 고려하세요.
 - `security_groups` 규칙에서 `source.type`/`destination.type = security-group`일 때 `value`는 논리 SG 이름 또는 실제 SG ID(`sg-...`)를 사용할 수 있습니다.
+- Security Group rule 식별자와 Route Table association은 목록 순서와 무관한 key를 사용하므로, 단순 순서 변경만으로 리소스 주소 드리프트가 발생하지 않습니다.
 
 #### 기능별 메모
 
@@ -129,7 +131,8 @@ project:
 - EKS Helm + private ECR OCI (`oci://<account>.dkr.ecr.<region>.amazonaws.com/...`): 모듈이 ECR 인증 토큰을 자동 조회해 Helm 저장소 인증 정보를 주입합니다.
 - EKS Helm Job 대기: `wait_for_jobs`를 지원하며 AWS Load Balancer Controller 같은 chart에서 webhook readiness Job 완료까지 대기할 수 있습니다.
 - EKS Helm 이미지 정책: `image_pull_policy`는 Helm `set`의 `image.pullPolicy` 축약 필드입니다(`set`에 `image.pullPolicy`가 이미 있으면 무시).
-- Kubernetes TargetGroupBinding: `k8s_target_group_bindings`는 `target_group_arn` 또는 `target_group_name` 중 하나가 필요하며, 모듈은 `elbv2.k8s.aws/v1beta1` `TargetGroupBinding` 리소스를 생성합니다(AWS Load Balancer Controller CRD 설치 필요).
+- Kubernetes Service: `k8s_services`로 클러스터 내부 트래픽 및 TargetGroupBinding 백엔드로 사용하는 `Service` 리소스를 관리합니다.
+- Kubernetes TargetGroupBinding: `k8s_target_group_bindings`는 `target_group_arn` 또는 `target_group_name` 중 하나가 필요하며, 모듈은 `aws eks update-kubeconfig` + `kubectl apply/delete` 방식으로 `elbv2.k8s.aws/v1beta1` `TargetGroupBinding`를 반영합니다(AWS Load Balancer Controller CRD와 backend endpoint가 잡힌 Kubernetes Service 필요).
 
 ### 4. 초기화 및 검증
 
@@ -285,6 +288,7 @@ EKS 확장 구성을 담당합니다.
 - Helm Releases
 - Kubernetes Storage Classes
 - Kubernetes Deployments
+- Kubernetes Services
 - Kubernetes TargetGroupBindings
 - EKS Access Entries
 - Pod Identity Associations

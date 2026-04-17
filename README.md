@@ -38,6 +38,7 @@ Spec definition and Terraform deployment are executed in this sequence, with an 
 - Terraform `>= 1.5.0`
 - AWS Provider `>= 5.33.0`
 - AWS CLI profile configuration when needed
+- `kubectl` installed when using `k8s_target_group_bindings`
 
 The root module uses:
 
@@ -113,6 +114,7 @@ Use this checklist while editing:
 - Resources not in Terraform state are not modified or deleted, even if they already exist in AWS.
 - For stricter guardrails, consider IAM/SCP controls that deny update/delete when `aws:ResourceTag/ManagedBy` does not match your project value.
 - For `security_groups` rules with `source.type`/`destination.type = security-group`, `value` can be either a logical security group name or a literal `sg-...` ID.
+- Security group rule identity and route-table associations use order-insensitive keys, so list reordering alone does not trigger resource address drift.
 
 #### Feature Notes
 
@@ -127,7 +129,8 @@ Use this checklist while editing:
 - EKS Helm with private ECR OCI (`oci://<account>.dkr.ecr.<region>.amazonaws.com/...`): module auto-fetches ECR auth and injects Helm repository credentials.
 - EKS Helm jobs: `wait_for_jobs` is supported and recommended for charts like AWS Load Balancer Controller that rely on jobs for webhook readiness.
 - EKS Helm image pull policy: `image_pull_policy` is a shorthand for Helm `set` key `image.pullPolicy` (ignored when `set` already includes `image.pullPolicy`).
-- Kubernetes TargetGroupBinding: `k8s_target_group_bindings` must set either `target_group_arn` or `target_group_name`; module creates `elbv2.k8s.aws/v1beta1` `TargetGroupBinding` resources and expects AWS Load Balancer Controller CRDs.
+- Kubernetes Services: `k8s_services` manages `Service` resources used by in-cluster traffic and TargetGroupBinding backends.
+- Kubernetes TargetGroupBinding: `k8s_target_group_bindings` must set either `target_group_arn` or `target_group_name`; module applies `elbv2.k8s.aws/v1beta1` `TargetGroupBinding` via `kubectl` (`aws eks update-kubeconfig` + `kubectl apply/delete`) and expects AWS Load Balancer Controller CRDs and a backend Kubernetes Service with matching endpoints.
 
 ### 4. Initialize and Validate
 
@@ -281,6 +284,7 @@ Owns extended EKS functionality:
 - Helm Releases
 - Kubernetes Storage Classes
 - Kubernetes Deployments
+- Kubernetes Services
 - Kubernetes TargetGroupBindings
 - EKS Access Entries
 - Pod Identity Associations

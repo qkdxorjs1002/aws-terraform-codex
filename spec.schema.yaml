@@ -103,6 +103,8 @@ properties:
               $ref: "#/$defs/generic_resource_array"
             k8s_deployments:
               $ref: "#/$defs/generic_resource_array"
+            k8s_services:
+              $ref: "#/$defs/generic_resource_array"
             k8s_target_group_bindings:
               $ref: "#/$defs/generic_resource_array"
             eks_irsa_roles:

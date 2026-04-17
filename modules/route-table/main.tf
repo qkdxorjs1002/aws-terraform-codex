@@ -26,7 +26,10 @@ resource "aws_route_table" "this" {
 }
 
 resource "aws_route_table_association" "this" {
-  for_each = { for idx, subnet_id in var.associated_subnet_ids : tostring(idx) => subnet_id }
+  for_each = {
+    for subnet_id in var.associated_subnet_ids :
+    subnet_id => subnet_id
+  }
 
   subnet_id      = each.value
   route_table_id = aws_route_table.this.id

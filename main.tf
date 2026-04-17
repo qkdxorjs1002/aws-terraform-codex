@@ -360,8 +360,7 @@ locals {
 
   security_group_inbound_rules = flatten([
     for security_group_name, security_group in local.security_groups : [
-      for index, rule in try(security_group.inbound_rules, []) : {
-        key                 = "${security_group_name}:inbound:${index}"
+      for rule in try(security_group.inbound_rules, []) : {
         security_group_name = security_group_name
         description         = try(rule.description, null)
         protocol            = try(rule.protocol, "tcp")
@@ -375,8 +374,7 @@ locals {
 
   security_group_outbound_rules = flatten([
     for security_group_name, security_group in local.security_groups : [
-      for index, rule in try(security_group.outbound_rules, []) : {
-        key                 = "${security_group_name}:outbound:${index}"
+      for rule in try(security_group.outbound_rules, []) : {
         security_group_name = security_group_name
         description         = try(rule.description, null)
         protocol            = try(rule.protocol, "tcp")
@@ -387,6 +385,36 @@ locals {
       }
     ]
   ])
+
+  security_group_inbound_rules_by_key = {
+    for rule in local.security_group_inbound_rules :
+    format(
+      "%s:inbound:%s",
+      rule.security_group_name,
+      sha1(jsonencode({
+        protocol   = rule.protocol
+        from_port  = rule.from_port
+        to_port    = rule.to_port
+        peer_type  = rule.peer_type
+        peer_value = rule.peer_value
+      }))
+    ) => rule
+  }
+
+  security_group_outbound_rules_by_key = {
+    for rule in local.security_group_outbound_rules :
+    format(
+      "%s:outbound:%s",
+      rule.security_group_name,
+      sha1(jsonencode({
+        protocol   = rule.protocol
+        from_port  = rule.from_port
+        to_port    = rule.to_port
+        peer_type  = rule.peer_type
+        peer_value = rule.peer_value
+      }))
+    ) => rule
+  }
 
   ec2_launch_template_names_by_key = try(module.compute_storage.ec2_launch_template_names_by_key, {})
 
@@ -680,10 +708,7 @@ module "security_groups" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "managed" {
-  for_each = {
-    for rule in local.security_group_inbound_rules :
-    rule.key => rule
-  }
+  for_each = local.security_group_inbound_rules_by_key
 
   security_group_id = module.security_groups[each.value.security_group_name].id
   description       = each.value.description
@@ -706,10 +731,7 @@ resource "aws_vpc_security_group_ingress_rule" "managed" {
 }
 
 resource "aws_vpc_security_group_egress_rule" "managed" {
-  for_each = {
-    for rule in local.security_group_outbound_rules :
-    rule.key => rule
-  }
+  for_each = local.security_group_outbound_rules_by_key
 
   security_group_id = module.security_groups[each.value.security_group_name].id
   description       = each.value.description

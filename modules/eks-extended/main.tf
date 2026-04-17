@@ -26,6 +26,11 @@ locals {
     "${deployment.cluster}:${deployment.name}:${idx}" => deployment
   }
 
+  k8s_services = {
+    for idx, service in try(var.resources_by_type.k8s_services, []) :
+    "${service.cluster}:${service.name}:${idx}" => service
+  }
+
   k8s_target_group_bindings = {
     for idx, binding in try(var.resources_by_type.k8s_target_group_bindings, []) :
     "${binding.cluster}:${binding.name}:${idx}" => binding
@@ -57,6 +62,10 @@ locals {
     [
       for _, deployment in local.k8s_deployments :
       deployment.cluster
+    ],
+    [
+      for _, service in local.k8s_services :
+      service.cluster
     ],
     [
       for _, binding in local.k8s_target_group_bindings :
@@ -237,7 +246,36 @@ locals {
     release_key => trimprefix(base64decode(data.aws_ecr_authorization_token.helm_oci_registry[registry_id].authorization_token), "AWS:")
   }
 
+  k8s_target_group_binding_manifests = {
+    for binding_key, binding in local.k8s_target_group_bindings :
+    binding_key => {
+      apiVersion = "elbv2.k8s.aws/v1beta1"
+      kind       = "TargetGroupBinding"
+      metadata = {
+        name        = binding.name
+        namespace   = try(binding.namespace, "default")
+        labels      = try(binding.labels, null)
+        annotations = try(binding.annotations, null)
+      }
+      spec = merge(
+        {
+          serviceRef = {
+            name = binding.service_name
+            port = try(binding.service_port, 80)
+          }
+        },
+        try(trimspace(tostring(binding.target_group_arn)), "") != "" ? { targetGroupARN = binding.target_group_arn } : {},
+        try(trimspace(tostring(binding.target_group_name)), "") != "" ? { targetGroupName = binding.target_group_name } : {},
+        try(trimspace(tostring(binding.target_type)), "") != "" ? { targetType = binding.target_type } : {},
+        try(trimspace(tostring(binding.vpc_id)), "") != "" ? { vpcID = binding.vpc_id } : {},
+        try(trimspace(tostring(binding.ip_address_type)), "") != "" ? { ipAddressType = binding.ip_address_type } : {},
+        try(binding.networking, null) == null ? {} : { networking = binding.networking }
+      )
+    }
+  }
+
   aws_cli_profile_args           = try(trimspace(var.profile), "") != "" ? ["--profile", trimspace(var.profile)] : []
+  aws_cli_profile_arg_string     = try(trimspace(var.profile), "") != "" ? " --profile '${trimspace(var.profile)}'" : ""
   k8s_exec_cluster_name_or_empty = coalesce(local.k8s_target_cluster_name, "")
 }
 
@@ -341,7 +379,7 @@ resource "terraform_data" "eks_helm_single_cluster_guard" {
   lifecycle {
     precondition {
       condition     = length(local.k8s_target_cluster_names) <= 1
-      error_message = "eks_helm_releases, k8s_storage_classes, k8s_deployments, and k8s_target_group_bindings currently support only one target cluster per spec apply."
+      error_message = "eks_helm_releases, k8s_storage_classes, k8s_deployments, k8s_services, and k8s_target_group_bindings currently support only one target cluster per spec apply."
     }
   }
 }
@@ -671,6 +709,59 @@ resource "kubernetes_deployment_v1" "managed" {
   ]
 }
 
+resource "kubernetes_service_v1" "managed" {
+  for_each = local.k8s_services
+
+  metadata {
+    name        = each.value.name
+    namespace   = try(each.value.namespace, "default")
+    labels      = try(each.value.labels, null)
+    annotations = try(each.value.annotations, null)
+  }
+
+  spec {
+    selector                          = try(each.value.selector, { app = each.value.name })
+    type                              = try(each.value.type, null)
+    session_affinity                  = try(each.value.session_affinity, null)
+    publish_not_ready_addresses       = try(each.value.publish_not_ready_addresses, null)
+    internal_traffic_policy           = try(each.value.internal_traffic_policy, null)
+    external_traffic_policy           = try(each.value.external_traffic_policy, null)
+    allocate_load_balancer_node_ports = try(each.value.allocate_load_balancer_node_ports, null)
+    load_balancer_class               = try(each.value.load_balancer_class, null)
+    external_ips                      = try(each.value.external_ips, null)
+    load_balancer_ip                  = try(each.value.load_balancer_ip, null)
+    load_balancer_source_ranges       = try(each.value.load_balancer_source_ranges, null)
+
+    dynamic "port" {
+      for_each = try(each.value.ports, [])
+
+      content {
+        name        = try(port.value.name, null)
+        port        = port.value.port
+        target_port = try(port.value.target_port, null)
+        protocol    = try(port.value.protocol, null)
+        node_port   = try(port.value.node_port, null)
+      }
+    }
+  }
+
+  lifecycle {
+    precondition {
+      condition     = length(try(each.value.ports, [])) > 0
+      error_message = "k8s_services requires at least one port entry."
+    }
+  }
+
+  depends_on = [
+    terraform_data.eks_runtime_prerequisites,
+    terraform_data.eks_helm_single_cluster_guard,
+    aws_eks_access_entry.managed,
+    aws_eks_access_policy_association.managed,
+    helm_release.managed,
+    kubernetes_deployment_v1.managed
+  ]
+}
+
 resource "terraform_data" "target_group_binding_webhook_warmup" {
   for_each = local.aws_load_balancer_controller_release_keys_for_bindings
 
@@ -688,33 +779,21 @@ resource "terraform_data" "target_group_binding_webhook_warmup" {
   ]
 }
 
-resource "kubernetes_manifest" "target_group_binding" {
+resource "terraform_data" "target_group_binding" {
   for_each = local.k8s_target_group_bindings
 
-  manifest = {
-    apiVersion = "elbv2.k8s.aws/v1beta1"
-    kind       = "TargetGroupBinding"
-    metadata = {
-      name        = each.value.name
-      namespace   = try(each.value.namespace, "default")
-      labels      = try(each.value.labels, null)
-      annotations = try(each.value.annotations, null)
-    }
-    spec = merge(
-      {
-        serviceRef = {
-          name = each.value.service_name
-          port = try(each.value.service_port, 80)
-        }
-      },
-      try(trimspace(tostring(each.value.target_group_arn)), "") != "" ? { targetGroupARN = each.value.target_group_arn } : {},
-      try(trimspace(tostring(each.value.target_group_name)), "") != "" ? { targetGroupName = each.value.target_group_name } : {},
-      try(trimspace(tostring(each.value.target_type)), "") != "" ? { targetType = each.value.target_type } : {},
-      try(trimspace(tostring(each.value.vpc_id)), "") != "" ? { vpcID = each.value.vpc_id } : {},
-      try(trimspace(tostring(each.value.ip_address_type)), "") != "" ? { ipAddressType = each.value.ip_address_type } : {},
-      try(each.value.networking, null) == null ? {} : { networking = each.value.networking }
-    )
+  input = {
+    cluster_name        = each.value.cluster
+    binding_name        = each.value.name
+    region              = var.region
+    profile_arg_string  = local.aws_cli_profile_arg_string
+    binding_json        = jsonencode(local.k8s_target_group_binding_manifests[each.key])
+    manifest_hash       = sha1(jsonencode(local.k8s_target_group_binding_manifests[each.key]))
   }
+
+  triggers_replace = [
+    sha1(jsonencode(local.k8s_target_group_binding_manifests[each.key]))
+  ]
 
   lifecycle {
     precondition {
@@ -726,12 +805,53 @@ resource "kubernetes_manifest" "target_group_binding" {
     }
   }
 
+  provisioner "local-exec" {
+    interpreter = ["/bin/bash", "-c"]
+    command     = <<-EOT
+      set -euo pipefail
+
+      command -v aws >/dev/null
+      command -v kubectl >/dev/null
+
+      kubeconfig_file="$(mktemp)"
+      trap 'rm -f "$kubeconfig_file"' EXIT
+
+      aws eks update-kubeconfig --name '${self.input.cluster_name}' --region '${self.input.region}'${self.input.profile_arg_string} --kubeconfig "$kubeconfig_file" --alias '${self.input.cluster_name}' >/dev/null
+
+      cat <<'MANIFEST' | kubectl --kubeconfig "$kubeconfig_file" --context '${self.input.cluster_name}' apply -f -
+      ${self.input.binding_json}
+      MANIFEST
+    EOT
+  }
+
+  provisioner "local-exec" {
+    when        = destroy
+    interpreter = ["/bin/bash", "-c"]
+    command     = <<-EOT
+      set -euo pipefail
+
+      if ! command -v aws >/dev/null || ! command -v kubectl >/dev/null; then
+        exit 0
+      fi
+
+      kubeconfig_file="$(mktemp)"
+      trap 'rm -f "$kubeconfig_file"' EXIT
+
+      aws eks update-kubeconfig --name '${self.input.cluster_name}' --region '${self.input.region}'${self.input.profile_arg_string} --kubeconfig "$kubeconfig_file" --alias '${self.input.cluster_name}' >/dev/null
+
+      cat <<'MANIFEST' | kubectl --kubeconfig "$kubeconfig_file" --context '${self.input.cluster_name}' delete --ignore-not-found -f -
+      ${self.input.binding_json}
+      MANIFEST
+    EOT
+  }
+
   depends_on = [
     terraform_data.eks_runtime_prerequisites,
     terraform_data.eks_helm_single_cluster_guard,
     terraform_data.target_group_binding_webhook_warmup,
     aws_eks_access_entry.managed,
     aws_eks_access_policy_association.managed,
-    helm_release.managed
+    helm_release.managed,
+    kubernetes_service_v1.managed
   ]
 }

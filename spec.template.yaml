@@ -718,9 +718,27 @@ project:
                   cpu: "250m"
                   memory: "256Mi"
 
+    # k8s_services:
+    # - name/cluster/namespace: Kubernetes Service identity and target cluster/namespace.
+    # - selector: Pod label selector map.
+    # - ports[]: Service ports (port required; target_port/protocol/node_port optional).
+    # - type: Optional Service type (ClusterIP | NodePort | LoadBalancer).
+    - k8s_services:
+        - name: "nginx-test"
+          cluster: "<eks-cluster-name>"
+          namespace: "default"
+          type: "ClusterIP"
+          selector:
+            app: "nginx-test"
+          ports:
+            - name: "http"
+              port: 80
+              target_port: 80
+              protocol: "TCP"
+
     # k8s_target_group_bindings:
     # - name/cluster/namespace: TargetGroupBinding identity and target cluster/namespace.
-    # - service_name/service_port: Kubernetes Service reference to bind traffic to.
+    # - service_name/service_port: Kubernetes Service reference to bind traffic to (for example from k8s_services).
     # - target_group_arn or target_group_name: Existing AWS target group reference (one required).
     # - target_type/ip_address_type/vpc_id/networking: Optional TargetGroupBinding spec fields.
     - k8s_target_group_bindings:

@@ -487,6 +487,37 @@ project:
           labels:
             app.kubernetes.io/managed-by: "terraform"
 
+    - k8s_deployments:
+        - name: "nginx-test"
+          cluster: "my-tst-tf-eks-ap1"
+          namespace: "default"
+          replicas: 2
+          selector_match_labels:
+            app: "nginx-test"
+          pod_labels:
+            app: "nginx-test"
+          containers:
+            - name: "nginx"
+              image: "nginx:stable"
+              image_pull_policy: "IfNotPresent"
+              ports:
+                - name: "http"
+                  container_port: 80
+                  protocol: "TCP"
+
+    - k8s_services:
+        - name: "nginx-test"
+          cluster: "my-tst-tf-eks-ap1"
+          namespace: "default"
+          type: "ClusterIP"
+          selector:
+            app: "nginx-test"
+          ports:
+            - name: "http"
+              port: 80
+              target_port: 80
+              protocol: "TCP"
+
     - k8s_target_group_bindings:
         - name: "my-tst-tf-nginx-tgb"
           cluster: "my-tst-tf-eks-ap1"
