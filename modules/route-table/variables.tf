@@ -7,8 +7,8 @@ variable "vpc_id" {
 }
 
 variable "associated_subnet_ids" {
-  type    = list(string)
-  default = []
+  type    = map(string)
+  default = {}
 }
 
 variable "routes" {

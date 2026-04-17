@@ -669,10 +669,10 @@ module "route_tables" {
   name   = each.value.name
   vpc_id = lookup(local.vpc_ids_by_name, each.value.vpc, each.value.vpc)
 
-  associated_subnet_ids = [
+  associated_subnet_ids = {
     for subnet in try(each.value.associated_subnets, []) :
-    lookup(local.subnet_ids_by_name, subnet, subnet)
-  ]
+    subnet => lookup(local.subnet_ids_by_name, subnet, subnet)
+  }
 
   routes = [
     for route in try(each.value.routes, []) : {
