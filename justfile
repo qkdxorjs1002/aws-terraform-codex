@@ -6,6 +6,8 @@ set shell := ["zsh", "-lc"]
 #   just plan spec.example.yaml
 #   just apply spec.example.yaml
 #   just destroy spec.example.yaml
+#   just import aws_s3_bucket.example my-bucket
+#   just import aws_s3_bucket.example my-bucket spec.example.yaml
 #   just graph spec.example.yaml
 #   just graph-order spec.example.yaml
 #
@@ -13,6 +15,7 @@ set shell := ["zsh", "-lc"]
 #   just plan-spec spec.vdh.stg.01.network.yaml
 #   just apply-spec spec.vdh.stg.01.network.yaml
 #   just destroy-spec spec.vdh.stg.01.network.yaml
+#   just import-spec spec.vdh.stg.01.network.yaml aws_s3_bucket.example my-bucket
 
 default:
   @just --list
@@ -43,6 +46,9 @@ apply spec_file="spec.yaml" *args:
 destroy spec_file="spec.yaml" *args:
   terraform destroy -var="spec_file={{spec_file}}" {{args}}
 
+import address resource_id spec_file="spec.yaml":
+  terraform import -var="spec_file={{spec_file}}" {{address}} {{resource_id}}
+
 plan-spec spec_file="spec.yaml" *args:
   @base=$(basename "{{spec_file}}"); \
   ws=$(echo "$base" | sed -E 's/\\.(ya?ml)$//' | sed -E 's/[^A-Za-z0-9_-]+/-/g'); \
@@ -60,3 +66,9 @@ destroy-spec spec_file="spec.yaml" *args:
   ws=$(echo "$base" | sed -E 's/\\.(ya?ml)$//' | sed -E 's/[^A-Za-z0-9_-]+/-/g'); \
   terraform workspace select "$ws" >/dev/null 2>&1 || terraform workspace new "$ws"; \
   terraform destroy -var="spec_file={{spec_file}}" {{args}}
+
+import-spec spec_file address resource_id:
+  @base=$(basename "{{spec_file}}"); \
+  ws=$(echo "$base" | sed -E 's/\\.(ya?ml)$//' | sed -E 's/[^A-Za-z0-9_-]+/-/g'); \
+  terraform workspace select "$ws" >/dev/null 2>&1 || terraform workspace new "$ws"; \
+  terraform import -var="spec_file={{spec_file}}" {{address}} {{resource_id}}

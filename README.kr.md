@@ -401,6 +401,10 @@ just validate spec.example.yaml
 just plan spec.example.yaml
 just apply spec.example.yaml
 just destroy spec.example.yaml
+
+# 기존 리소스를 state로 import
+just import aws_s3_bucket.example my-bucket
+just import aws_s3_bucket.example my-bucket spec.example.yaml
 ```
 
 workspace를 자동 선택/생성해서 spec별 state를 분리하려면:
@@ -413,6 +417,9 @@ just init
 just plan-spec spec.vdh.stg.01.network.yaml
 just apply-spec spec.vdh.stg.01.network.yaml
 just destroy-spec spec.vdh.stg.01.network.yaml
+
+# spec별 workspace + state로 import
+just import-spec spec.vdh.stg.01.network.yaml aws_s3_bucket.example my-bucket
 ```
 
 `graph.dot` 파일 생성 없이 Terraform 의존성 그래프(`graph.d2`, `graph.svg`)를 생성하려면:

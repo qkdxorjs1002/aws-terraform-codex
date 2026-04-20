@@ -397,6 +397,10 @@ just validate spec.example.yaml
 just plan spec.example.yaml
 just apply spec.example.yaml
 just destroy spec.example.yaml
+
+# Import an existing resource into state
+just import aws_s3_bucket.example my-bucket
+just import aws_s3_bucket.example my-bucket spec.example.yaml
 ```
 
 For workspace-aware execution (auto select/create workspace from spec filename):
@@ -409,6 +413,9 @@ just init
 just plan-spec spec.vdh.stg.01.network.yaml
 just apply-spec spec.vdh.stg.01.network.yaml
 just destroy-spec spec.vdh.stg.01.network.yaml
+
+# Import with per-spec workspace + per-spec state
+just import-spec spec.vdh.stg.01.network.yaml aws_s3_bucket.example my-bucket
 ```
 
 To export Terraform dependency graph outputs (`graph.d2`, `graph.svg`) without creating `graph.dot`:
