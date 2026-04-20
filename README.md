@@ -230,7 +230,8 @@ The repository policy is simple:
 ├── spec.example.yaml
 ├── spec.schema.yaml
 ├── scripts/
-│   └── graphviz_to_d2.py
+│   ├── graphviz_to_d2.py
+│   └── graphviz_init_order.py
 └── modules/
     ├── vpc/
     ├── subnet/
@@ -430,6 +431,30 @@ If you have D2 CLI installed, you can render the generated D2 file:
 
 ```bash
 d2 graph.d2 graph.d2.svg
+```
+
+To summarize Terraform resource initialization order as CLI steps:
+
+```bash
+# Print to stdout
+just graph-order
+
+# Print with a specific spec file
+just graph-order spec.example.yaml
+
+# Save to a text file
+just graph-order spec.example.yaml graph.init-order.txt
+
+# Direct pipeline usage (without just)
+TF_VAR_spec_file="spec.example.yaml" terraform graph | python3 scripts/graphviz_init_order.py
+```
+
+Example output:
+
+```text
+1. vpc['main']
+2-1. subnet['private-a']
+2-2. subnet['private-b']
 ```
 
 ## Collaboration Principles

@@ -6,6 +6,8 @@ set shell := ["zsh", "-lc"]
 #   just plan spec.example.yaml
 #   just apply spec.example.yaml
 #   just destroy spec.example.yaml
+#   just graph spec.example.yaml
+#   just graph-order spec.example.yaml
 #
 # Workspace-aware shortcuts:
 #   just plan-spec spec.vdh.stg.01.network.yaml
@@ -28,6 +30,9 @@ validate spec_file="spec.yaml":
 
 graph spec_file="spec.yaml" *args:
   TF_VAR_spec_file="{{spec_file}}" terraform graph {{args}} | tee >(python3 scripts/graphviz_to_d2.py --output graph.d2)
+
+graph-order spec_file="spec.yaml" output="-" *args:
+  TF_VAR_spec_file="{{spec_file}}" terraform graph {{args}} | python3 scripts/graphviz_init_order.py --output "{{output}}"
 
 plan spec_file="spec.yaml" *args:
   terraform plan -var="spec_file={{spec_file}}" {{args}}
