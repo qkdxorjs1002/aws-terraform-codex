@@ -573,6 +573,12 @@ project:
     # - name: Managed EKS addon name.
     # - cluster: Parent EKS cluster logical name.
     # - version: Addon version (or latest).
+    # - provision_phase: Addon scheduling phase.
+    #   - before_nodegroup: Apply before node groups.
+    #   - after_nodegroup: Apply after node groups.
+    #   - auto(default): Infer phase by addon name.
+    #     before_nodegroup defaults: vpc-cni, kube-proxy, eks-pod-identity-agent.
+    #     Other addons default to after_nodegroup (for example coredns, aws-ebs-csi-driver).
     # - resolve_conflicts_on_create/update: Conflict handling policy.
     # - service_account_role_arn: Optional IRSA role ARN for addon.
     # - configuration_values: Addon-specific JSON configuration string.
@@ -585,6 +591,7 @@ project:
         - name: "vpc-cni" # vpc-cni | coredns | kube-proxy | aws-ebs-csi-driver | eks-pod-identity-agent
           cluster: "<eks-cluster-name>"
           version: "latest" # latest or exact version like v1.18.0-eksbuild.1
+          provision_phase: "auto" # auto | before_nodegroup | after_nodegroup
           resolve_conflicts_on_create: "OVERWRITE" # NONE | OVERWRITE
           resolve_conflicts_on_update: "PRESERVE" # NONE | OVERWRITE | PRESERVE
           service_account_role_arn: "<optional-irsa-role-arn>"

@@ -41,6 +41,9 @@
 - AWS Provider `>= 5.33.0`
 - 필요 시 AWS CLI 프로파일 설정
 - `k8s_target_group_bindings`를 사용할 경우 `kubectl` 설치
+- Graphviz DOT -> D2 변환 스크립트를 위한 Python `>= 3.8`
+- `just graph` 사용 시 Graphviz (`dot`) 설치
+- 선택 사항: `graph.d2`를 이미지로 렌더링할 때 D2 CLI (`d2`)
 
 루트 모듈은 아래 설정을 사용합니다.
 
@@ -126,6 +129,8 @@ project:
 - Launch Template user data: 우선순위는 `user_data_base64` > `user_data_file` > 인라인 `user_data`이며, `user_data_file`은 저장소 루트 기준 상대경로/절대경로를 모두 지원합니다.
 - Launch Template 보간: `vpc_security_groups`/`security_groups`는 `templatestring()`으로 `${security_group["<name>"]}`, `${cluster["<eks-cluster-name>"].security_group_id}`(별칭 `${eks_cluster["<eks-cluster-name>"].security_group_id}`)를 참조할 수 있습니다.
 - EKS Add-on 보간: `eks_addons.configuration_values`도 위 cluster security-group 보간을 지원하며 `${subnet["<name>"]}`, `${security_group["<name>"]}`와 함께 사용할 수 있습니다.
+- EKS Add-on 배포 단계: `eks_addons.provision_phase`는 `before_nodegroup`, `after_nodegroup`, `auto`(기본값)를 지원합니다. `before_nodegroup` Add-on은 Node Group 이전, `after_nodegroup` Add-on은 Node Group 이후에 적용됩니다.
+- EKS Add-on `auto` 기본값: `vpc-cni`, `kube-proxy`, `eks-pod-identity-agent`는 `before_nodegroup`으로 분류되고, 그 외 Add-on(예: `coredns`, `aws-ebs-csi-driver`)은 Worker Node 생성 전 replica readiness 정체를 피하기 위해 `after_nodegroup`으로 분류됩니다.
 - EKS 의존성 순서: Launch Template이 `cluster.*.security_group_id`를 참조하면 Terraform이 EKS cluster를 먼저 해석한 뒤 Launch Template을 생성해 Node Group에서 안전하게 참조됩니다.
 - EKS Node Group 버전: `launch_template.version`은 명시 버전과 `$Latest`/`$Default`를 모두 지원하고, 반복 plan diff 방지를 위해 내부적으로 숫자 버전으로 정규화됩니다.
 - EKS Helm + private ECR OCI (`oci://<account>.dkr.ecr.<region>.amazonaws.com/...`): 모듈이 ECR 인증 토큰을 자동 조회해 Helm 저장소 인증 정보를 주입합니다.
@@ -228,6 +233,8 @@ terraform apply -var="spec_file=spec.vdh.stg.01.network.yaml"
 ├── spec.template.yaml
 ├── spec.example.yaml
 ├── spec.schema.yaml
+├── scripts/
+│   └── graphviz_to_d2.py
 └── modules/
     ├── vpc/
     ├── subnet/
@@ -296,7 +303,7 @@ EKS 확장 구성을 담당합니다.
 - Helm/Kubernetes 인증은 `aws eks get-token`을 사용하며, `project.profile`이 설정된 경우 해당 프로파일을 포함해 호출합니다.
 - EKS cluster creator admin bootstrap이 비활성화된 경우, Helm/Kubernetes 리소스보다 먼저 Terraform 실행 주체에 대한 `eks_access_entries`를 정의해야 합니다.
 - `eks-extended` 내부에서는 access entry 및 access policy association이 pod identity association보다 먼저 적용됩니다.
-- EKS 오케스트레이션 순서는 `eks_clusters -> eks_node_groups -> eks_addons -> eks_extended`로 고정됩니다.
+- EKS 오케스트레이션 순서는 `eks_clusters -> eks_addons(before_nodegroup) -> eks_node_groups -> eks_addons(after_nodegroup) -> eks_extended`로 고정됩니다.
 
 ### `modules/edge-containers-observability`
 
@@ -405,6 +412,28 @@ just init
 just plan-spec spec.vdh.stg.01.network.yaml
 just apply-spec spec.vdh.stg.01.network.yaml
 just destroy-spec spec.vdh.stg.01.network.yaml
+```
+
+`graph.dot` 파일 생성 없이 Terraform 의존성 그래프(`graph.d2`, `graph.svg`)를 생성하려면:
+
+```bash
+# 기본 spec.yaml 기준 그래프 생성
+just graph
+
+# 특정 spec 파일 기준 그래프 생성
+just graph spec.example.yaml
+
+# 필요 시 terraform graph 추가 인자 전달
+just graph spec.example.yaml -draw-cycles
+
+# terraform graph 출력을 바로 D2로 변환
+TF_VAR_spec_file="spec.example.yaml" terraform graph | python3 scripts/graphviz_to_d2.py --output graph.d2
+```
+
+D2 CLI가 설치되어 있다면 생성된 D2 파일을 렌더링할 수 있습니다.
+
+```bash
+d2 graph.d2 graph.d2.svg
 ```
 
 ## 협업 원칙

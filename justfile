@@ -26,6 +26,9 @@ use-workspace spec_file="spec.yaml":
 validate spec_file="spec.yaml":
   TF_VAR_spec_file="{{spec_file}}" terraform validate
 
+graph spec_file="spec.yaml" *args:
+  TF_VAR_spec_file="{{spec_file}}" terraform graph {{args}} | tee >(python3 scripts/graphviz_to_d2.py --output graph.d2)
+
 plan spec_file="spec.yaml" *args:
   terraform plan -var="spec_file={{spec_file}}" {{args}}
 

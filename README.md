@@ -39,6 +39,9 @@ Spec definition and Terraform deployment are executed in this sequence, with an 
 - AWS Provider `>= 5.33.0`
 - AWS CLI profile configuration when needed
 - `kubectl` installed when using `k8s_target_group_bindings`
+- Python `>= 3.8` for Graphviz DOT -> D2 conversion script
+- Graphviz (`dot`) when using `just graph`
+- Optional: D2 CLI (`d2`) when rendering `graph.d2` into images
 
 The root module uses:
 
@@ -124,6 +127,8 @@ Use this checklist while editing:
 - Launch templates user data: priority is `user_data_base64` > `user_data_file` > inline `user_data`; `user_data_file` supports repo-relative or absolute paths.
 - Launch templates interpolation: `vpc_security_groups`/`security_groups` support `templatestring()` with `${security_group["<name>"]}` and `${cluster["<eks-cluster-name>"].security_group_id}` (alias `${eks_cluster["<eks-cluster-name>"].security_group_id}`).
 - EKS add-ons interpolation: `eks_addons.configuration_values` supports the same cluster security-group interpolation, plus `${subnet["<name>"]}` and `${security_group["<name>"]}` maps.
+- EKS add-on rollout phase: `eks_addons.provision_phase` supports `before_nodegroup`, `after_nodegroup`, and `auto` (default). `before_nodegroup` add-ons are applied before node groups, and `after_nodegroup` add-ons are applied after node groups.
+- EKS add-on auto defaults: `auto` applies `vpc-cni`, `kube-proxy`, and `eks-pod-identity-agent` in `before_nodegroup`; other add-ons (for example `coredns`, `aws-ebs-csi-driver`) default to `after_nodegroup` to avoid replica readiness stalls before worker nodes exist.
 - EKS dependency ordering: if a launch template references `cluster.*.security_group_id`, the cluster is resolved first so node groups can consume the launch template safely.
 - EKS node groups: `launch_template.version` supports explicit versions plus `$Latest`/`$Default`, and symbolic versions are normalized to numeric versions to avoid persistent plan drift.
 - EKS Helm with private ECR OCI (`oci://<account>.dkr.ecr.<region>.amazonaws.com/...`): module auto-fetches ECR auth and injects Helm repository credentials.
@@ -224,6 +229,8 @@ The repository policy is simple:
 ├── spec.template.yaml
 ├── spec.example.yaml
 ├── spec.schema.yaml
+├── scripts/
+│   └── graphviz_to_d2.py
 └── modules/
     ├── vpc/
     ├── subnet/
@@ -292,7 +299,7 @@ Owns extended EKS functionality:
 - Helm/Kubernetes authentication uses `aws eks get-token` and includes `project.profile` when set.
 - If EKS cluster creator admin bootstrap is disabled, define `eks_access_entries` for the Terraform execution principal before Helm/Kubernetes resources.
 - Within `eks-extended`, access entries and access policy associations are applied before pod identity associations.
-- EKS orchestration order is fixed as `eks_clusters -> eks_node_groups -> eks_addons -> eks_extended`.
+- EKS orchestration order is fixed as `eks_clusters -> eks_addons(before_nodegroup) -> eks_node_groups -> eks_addons(after_nodegroup) -> eks_extended`.
 
 ### `modules/edge-containers-observability`
 
@@ -401,6 +408,28 @@ just init
 just plan-spec spec.vdh.stg.01.network.yaml
 just apply-spec spec.vdh.stg.01.network.yaml
 just destroy-spec spec.vdh.stg.01.network.yaml
+```
+
+To export Terraform dependency graph outputs (`graph.d2`, `graph.svg`) without creating `graph.dot`:
+
+```bash
+# Generate graph files from default spec.yaml
+just graph
+
+# Generate graph files from a specific spec
+just graph spec.example.yaml
+
+# Pass extra terraform graph args when needed
+just graph spec.example.yaml -draw-cycles
+
+# Pipe terraform graph output directly to D2 conversion
+TF_VAR_spec_file="spec.example.yaml" terraform graph | python3 scripts/graphviz_to_d2.py --output graph.d2
+```
+
+If you have D2 CLI installed, you can render the generated D2 file:
+
+```bash
+d2 graph.d2 graph.d2.svg
 ```
 
 ## Collaboration Principles

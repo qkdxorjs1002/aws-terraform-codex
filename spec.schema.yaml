@@ -362,6 +362,12 @@ $defs:
         minLength: 1
       version:
         type: string
+      provision_phase:
+        type: string
+        enum:
+          - auto
+          - before_nodegroup
+          - after_nodegroup
       resolve_conflicts_on_create:
         type: string
         enum:

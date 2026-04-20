@@ -23,13 +23,22 @@ output "eks_node_groups" {
 
 output "eks_addons" {
   description = "Created EKS addons"
-  value = {
-    for key, mod in module.eks_addons :
-    key => {
-      arn     = mod.arn
-      version = mod.version
+  value = merge(
+    {
+      for key, mod in module.eks_addons_pre_node_groups :
+      key => {
+        arn     = mod.arn
+        version = mod.version
+      }
+    },
+    {
+      for key, mod in module.eks_addons_post_node_groups :
+      key => {
+        arn     = mod.arn
+        version = mod.version
+      }
     }
-  }
+  )
 }
 
 output "vpcs" {

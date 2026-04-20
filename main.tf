@@ -344,10 +344,16 @@ locals {
     name => mod.arn
   }
 
-  eks_addon_arns_by_key = {
-    for name, mod in module.eks_addons :
-    name => mod.arn
-  }
+  eks_addon_arns_by_key = merge(
+    {
+      for name, mod in module.eks_addons_pre_node_groups :
+      name => mod.arn
+    },
+    {
+      for name, mod in module.eks_addons_post_node_groups :
+      name => mod.arn
+    }
+  )
 
   security_group_ids_by_name = merge(local.existing_security_group_ids_by_name, {
     for name, mod in module.security_groups :
@@ -485,9 +491,14 @@ locals {
     })
   }
 
+  eks_before_nodegroup_addon_names = toset([
+    "vpc-cni"
+  ])
+
   eks_addons = {
     for addon in try(local.resources_by_type.eks_addons, []) :
     "${addon.cluster}:${addon.name}" => merge(addon, {
+      provision_phase = lower(trimspace(coalesce(try(addon.provision_phase, null), "auto")))
       configuration_values = try(addon.configuration_values, null) == null ? null : templatestring(
         addon.configuration_values,
         {
@@ -521,6 +532,24 @@ locals {
       )
     })
   }
+
+  eks_addons_pre_node_groups = {
+    for key, addon in local.eks_addons :
+    key => addon
+    if addon.provision_phase == "before_nodegroup" || (
+      addon.provision_phase == "auto" &&
+      contains(local.eks_before_nodegroup_addon_names, lower(addon.name))
+    )
+  }
+
+  eks_addons_post_node_groups = {
+    for key, addon in local.eks_addons :
+    key => addon
+    if addon.provision_phase == "after_nodegroup" || (
+      addon.provision_phase == "auto" &&
+      !contains(local.eks_before_nodegroup_addon_names, lower(addon.name))
+    )
+  }
 }
 
 check "project_managed_by_is_set" {
@@ -541,6 +570,16 @@ check "project_maintainer_is_set" {
   assert {
     condition     = local.project_maintainer != ""
     error_message = "spec.yaml project.maintainer must be set to apply global ownership tags."
+  }
+}
+
+check "eks_addon_provision_phase_is_valid" {
+  assert {
+    condition = alltrue([
+      for addon in values(local.eks_addons) :
+      contains(["auto", "before_nodegroup", "after_nodegroup"], addon.provision_phase)
+    ])
+    error_message = "eks_addons.provision_phase must be one of auto, before_nodegroup, after_nodegroup."
   }
 }
 
@@ -836,13 +875,35 @@ module "eks_node_groups" {
 
   depends_on = [
     module.eks_clusters,
-    module.compute_storage
+    module.compute_storage,
+    module.eks_addons_pre_node_groups
   ]
 }
 
-module "eks_addons" {
+module "eks_addons_pre_node_groups" {
   source   = "./modules/eks-addon"
-  for_each = local.eks_addons
+  for_each = local.eks_addons_pre_node_groups
+
+  cluster_name = each.value.cluster
+  addon_name   = each.value.name
+
+  addon_version = try(each.value.version, "latest")
+
+  resolve_conflicts_on_create = try(each.value.resolve_conflicts_on_create, "OVERWRITE")
+  resolve_conflicts_on_update = try(each.value.resolve_conflicts_on_update, "PRESERVE")
+
+  service_account_role_arn = try(each.value.service_account_role_arn, null)
+  configuration_values     = try(each.value.configuration_values, null)
+  preserve                 = try(each.value.preserve, false)
+
+  depends_on = [
+    module.eks_clusters
+  ]
+}
+
+module "eks_addons_post_node_groups" {
+  source   = "./modules/eks-addon"
+  for_each = local.eks_addons_post_node_groups
 
   cluster_name = each.value.cluster
   addon_name   = each.value.name

@@ -30,3 +30,6 @@ terraform.rc
 
 # Repository-local tooling files
 .DS_Store
+
+# Python script cache
+**/__pycache__/*
