@@ -77,6 +77,8 @@ properties:
               $ref: "#/$defs/generic_resource_array"
             ec2_launch_templates:
               $ref: "#/$defs/generic_resource_array"
+            ec2_auto_scaling_groups:
+              $ref: "#/$defs/generic_resource_array"
             ec2_load_balancers:
               $ref: "#/$defs/generic_resource_array"
             ec2_alb_target_groups:

@@ -128,6 +128,8 @@ project:
 - Launch Template AMI: `image_id`는 `ami-*` 또는 AMI 이름을 받을 수 있고, AMI 이름 조회는 `image_owners`(기본 `["self"]`), `image_most_recent`(기본 `true`)로 제어합니다.
 - Launch Template user data: 우선순위는 `user_data_base64` > `user_data_file` > 인라인 `user_data`이며, `user_data_file`은 저장소 루트 기준 상대경로/절대경로를 모두 지원합니다.
 - Launch Template 보간: `vpc_security_groups`/`security_groups`는 `templatestring()`으로 `${security_group["<name>"]}`, `${cluster["<eks-cluster-name>"].security_group_id}`(별칭 `${eks_cluster["<eks-cluster-name>"].security_group_id}`)를 참조할 수 있습니다.
+- EC2 Auto Scaling Group: `ec2_auto_scaling_groups`는 관리 중인 `ec2_launch_templates`와 `ec2_alb_target_groups`를 논리 이름으로 참조할 수 있으며, 기존 Launch Template 이름/ID나 Target Group ARN도 그대로 받을 수 있습니다.
+- EC2 Auto Scaling instance refresh: `instance_refresh`로 rolling 교체를 정의할 수 있고, `triggers`, `min_healthy_percentage`, `instance_warmup` 같은 세부 옵션을 함께 지정할 수 있습니다.
 - EKS Add-on 보간: `eks_addons.configuration_values`도 위 cluster security-group 보간을 지원하며 `${subnet["<name>"]}`, `${security_group["<name>"]}`와 함께 사용할 수 있습니다.
 - EKS Add-on 배포 단계: `eks_addons.provision_phase`는 `before_nodegroup`, `after_nodegroup`, `auto`(기본값)를 지원합니다. `before_nodegroup` Add-on은 Node Group 이전, `after_nodegroup` Add-on은 Node Group 이후에 적용됩니다.
 - EKS Add-on `auto` 기본값: `vpc-cni`, `kube-proxy`, `eks-pod-identity-agent`는 `before_nodegroup`으로 분류되고, 그 외 Add-on(예: `coredns`, `aws-ebs-csi-driver`)은 Worker Node 생성 전 replica readiness 정체를 피하기 위해 `after_nodegroup`으로 분류됩니다.
@@ -284,6 +286,7 @@ terraform apply -var="spec_file=spec.vdh.stg.01.network.yaml"
 - RDS
 - EC2
 - Launch Template
+- EC2 Auto Scaling Group
 - ALB
 - S3
 

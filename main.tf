@@ -129,6 +129,7 @@ locals {
       flatten([for endpoint in try(local.resources_by_type.vpc_endpoints, []) : try(endpoint.subnets, [])]),
       flatten([for network_acl in try(local.resources_by_type.network_acls, []) : try(network_acl.associated_subnets, [])]),
       [for ec2 in try(local.resources_by_type.ec2_instances, []) : try(ec2.subnet, null)],
+      flatten([for autoscaling_group in try(local.resources_by_type.ec2_auto_scaling_groups, []) : try(autoscaling_group.subnets, [])]),
       flatten([for rds in try(local.resources_by_type.rds_instances, []) : try(rds.subnets, [])]),
       flatten([for cluster in try(local.resources_by_type.eks_clusters, []) : try(cluster.subnet_ids, [])]),
       flatten([for node_group in try(local.resources_by_type.eks_node_groups, []) : try(node_group.subnet_ids, [])]),

@@ -357,6 +357,47 @@ project:
               Environment: "<env>"
             volume:
               Environment: "<env>"
+    # ec2_auto_scaling_groups:
+    # - name: Logical EC2 Auto Scaling Group identifier.
+    # - subnets: One or more subnet logical names or subnet IDs for instance placement.
+    # - launch_template.name/version: Managed launch template logical name or existing template name/ID.
+    #   version supports explicit numbers plus $Latest/$Default (default: $Latest).
+    # - target_groups: Optional ALB target group logical names or target group ARNs.
+    # - desired_capacity/min_size/max_size: Group capacity settings.
+    # - health_check_type/grace_period: EC2/ELB health model and warm-up time.
+    # - instance_refresh: Optional rolling refresh strategy triggered by launch template/tag changes.
+    # - tags[]: ASG tags with optional propagate_at_launch.
+    - ec2_auto_scaling_groups:
+        - name: "<asg-name>"
+          subnets:
+            - "<private-subnet-1>"
+            - "<private-subnet-2>"
+          launch_template:
+            name: "<launch-template-name>"
+            version: "$Latest"
+          target_groups:
+            - "<target-group-name>"
+          min_size: 2
+          max_size: 4
+          desired_capacity: 2
+          default_cooldown: 300
+          health_check_type: "ELB" # EC2 | ELB
+          health_check_grace_period: 300
+          force_delete: false
+          protect_from_scale_in: false
+          termination_policies:
+            - "OldestInstance"
+          enabled_metrics:
+            - "GroupDesiredCapacity"
+            - "GroupInServiceInstances"
+          metrics_granularity: "1Minute"
+          instance_refresh:
+            strategy: "Rolling"
+            triggers:
+              - "launch_template"
+            preferences:
+              min_healthy_percentage: 50
+              instance_warmup: 300
 
     # ec2_load_balancers:
     # - name: Logical ALB/NLB identifier.

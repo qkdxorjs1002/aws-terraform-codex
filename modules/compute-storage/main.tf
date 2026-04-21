@@ -17,8 +17,8 @@ module "ec2" {
 module "launch_template" {
   source = "./launch-template"
 
-  resources_by_type          = var.resources_by_type
-  security_group_ids_by_name = var.security_group_ids_by_name
+  resources_by_type              = var.resources_by_type
+  security_group_ids_by_name     = var.security_group_ids_by_name
   eks_cluster_attributes_by_name = var.eks_cluster_attributes_by_name
 }
 
@@ -29,6 +29,16 @@ module "alb" {
   vpc_ids_by_name            = var.vpc_ids_by_name
   subnet_ids_by_name         = var.subnet_ids_by_name
   security_group_ids_by_name = var.security_group_ids_by_name
+}
+
+module "asg" {
+  source = "./asg"
+
+  resources_by_type                      = var.resources_by_type
+  subnet_ids_by_name                     = var.subnet_ids_by_name
+  launch_template_names_by_key           = module.launch_template.names_by_key
+  launch_template_latest_versions_by_key = module.launch_template.latest_versions_by_key
+  alb_target_group_arns_by_key           = module.alb.target_group_arns_by_key
 }
 
 module "s3" {

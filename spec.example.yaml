@@ -40,6 +40,22 @@ project:
                 volume_type: "gp3"
                 encrypted: true
                 delete_on_termination: true
+        - name: "my-tst-tf-web-asg-lt"
+          description: "Launch template for EC2 web auto scaling group"
+          image_id: "ami-0123456789abcdef0"
+          instance_type: "t3.medium"
+          key_name: "my-tst-tf-key"
+          vpc_security_groups:
+            - "my-tst-tf-web-sg"
+          metadata_options:
+            http_tokens: "required"
+            http_endpoint: "enabled"
+            instance_metadata_tags: "enabled"
+          tag_specifications:
+            instance:
+              Role: "web"
+            volume:
+              Role: "web"
     - vpcs:
         - name: "my-tst-tf-vpc-ap1"
           cidr: "10.80.0.0/16"
@@ -206,6 +222,81 @@ project:
               destination:
                 type: "ip"
                 value: "0.0.0.0/0"
+        - name: "my-tst-tf-web-sg"
+          vpc: "my-tst-tf-vpc-ap1"
+          revoke_rules_on_delete: false
+          inbound_rules:
+            - description: "Allow HTTP from internet"
+              protocol: "tcp"
+              port_range: 80
+              source:
+                type: "ip"
+                value: "0.0.0.0/0"
+          outbound_rules:
+            - description: "Allow all outbound"
+              protocol: "-1"
+              port_range:
+                from: 0
+                to: 0
+              destination:
+                type: "ip"
+                value: "0.0.0.0/0"
+    - ec2_load_balancers:
+        - name: "my-tst-tf-web-alb"
+          vpc: "my-tst-tf-vpc-ap1"
+          type: "application"
+          subnets:
+            - subnet: "my-tst-tf-sbn-pub-ap1a"
+            - subnet: "my-tst-tf-sbn-pub-ap1c"
+          security_groups:
+            - "my-tst-tf-web-sg"
+          scheme: "internet-facing"
+          listeners:
+            - protocol: "HTTP"
+              port: 80
+              target_groups:
+                - "my-tst-tf-web-tg"
+    - ec2_alb_target_groups:
+        - name: "my-tst-tf-web-tg"
+          type: "instance"
+          vpc: "my-tst-tf-vpc-ap1"
+          protocol: "HTTP"
+          port: 80
+          health_check:
+            protocol: "HTTP"
+            path: "/health"
+            healthy_threshold: 3
+            unhealthy_threshold: 2
+            timeout_seconds: 5
+            interval_seconds: 30
+            success_codes: 200
+    - ec2_auto_scaling_groups:
+        - name: "my-tst-tf-web-asg"
+          subnets:
+            - "my-tst-tf-sbn-pri-ap1a"
+            - "my-tst-tf-sbn-pri-ap1c"
+          launch_template:
+            name: "my-tst-tf-web-asg-lt"
+            version: "$Latest"
+          target_groups:
+            - "my-tst-tf-web-tg"
+          min_size: 2
+          max_size: 4
+          desired_capacity: 2
+          health_check_type: "ELB"
+          health_check_grace_period: 300
+          termination_policies:
+            - "OldestInstance"
+          enabled_metrics:
+            - "GroupDesiredCapacity"
+            - "GroupInServiceInstances"
+          instance_refresh:
+            strategy: "Rolling"
+            triggers:
+              - "launch_template"
+            preferences:
+              min_healthy_percentage: 50
+              instance_warmup: 300
     - vpc_endpoints:
         - name: "my-tst-tf-vpce-ec2-ap1"
           vpc: "my-tst-tf-vpc-ap1"

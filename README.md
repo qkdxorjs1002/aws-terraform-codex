@@ -126,6 +126,8 @@ Use this checklist while editing:
 - Launch templates AMI: `image_id` accepts either `ami-*` or an AMI name; AMI-name lookup can be tuned with `image_owners` (default `["self"]`) and `image_most_recent` (default `true`).
 - Launch templates user data: priority is `user_data_base64` > `user_data_file` > inline `user_data`; `user_data_file` supports repo-relative or absolute paths.
 - Launch templates interpolation: `vpc_security_groups`/`security_groups` support `templatestring()` with `${security_group["<name>"]}` and `${cluster["<eks-cluster-name>"].security_group_id}` (alias `${eks_cluster["<eks-cluster-name>"].security_group_id}`).
+- EC2 Auto Scaling Groups: `ec2_auto_scaling_groups` can reference managed `ec2_launch_templates` by logical name and ALB target groups by logical name, while still accepting literal existing launch template names/IDs and target group ARNs.
+- EC2 Auto Scaling instance refresh: `instance_refresh` supports rolling replacements with `triggers` and `preferences` such as `min_healthy_percentage` and `instance_warmup`.
 - EKS add-ons interpolation: `eks_addons.configuration_values` supports the same cluster security-group interpolation, plus `${subnet["<name>"]}` and `${security_group["<name>"]}` maps.
 - EKS add-on rollout phase: `eks_addons.provision_phase` supports `before_nodegroup`, `after_nodegroup`, and `auto` (default). `before_nodegroup` add-ons are applied before node groups, and `after_nodegroup` add-ons are applied after node groups.
 - EKS add-on auto defaults: `auto` applies `vpc-cni`, `kube-proxy`, and `eks-pod-identity-agent` in `before_nodegroup`; other add-ons (for example `coredns`, `aws-ebs-csi-driver`) default to `after_nodegroup` to avoid replica readiness stalls before worker nodes exist.
@@ -280,6 +282,7 @@ Owns compute and storage resources:
 - RDS
 - EC2
 - Launch Template
+- EC2 Auto Scaling Group
 - ALB
 - S3
 
