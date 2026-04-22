@@ -112,7 +112,7 @@ project:
 
 #### 핵심 규칙
 
-- 참조는 이름 기반입니다. 예를 들어 raw ID 대신 `vpc: "main-vpc"`처럼 논리 이름을 사용합니다.
+- 참조는 명시 키 사용을 권장합니다. ID는 `*_id`, 이름은 `*_name`, ARN은 `*_arn`(`*_ids`/`*_names` 포함)으로 작성하세요. 기존 혼용 키는 하위 호환으로 계속 지원됩니다.
 - 현재 스펙에서 관리하지 않는 네트워크 리소스를 참조해도 Terraform이 기존 AWS 리소스를 `Name` 태그 기준으로 조회해 실제 ID로 매핑합니다(보안 그룹은 SG name 기준 조회).
 - `project.environment`, `project.managed_by`, `project.maintainer`는 필수입니다. 루트 provider의 `default_tags`를 통해 `Environment`, `ManagedBy`, `Maintainer`가 전역 적용됩니다.
 - `Name` 태그는 각 리소스의 논리 식별자(`name`, `family`, `domain_name`, `alias` 등)로 자동 적용되므로 `tags.Name`를 반복 입력할 필요가 없습니다.
@@ -120,15 +120,25 @@ project:
 - 권한 레이어까지 강제하려면 `aws:ResourceTag/ManagedBy`가 프로젝트 값과 다를 때 update/delete를 거부하는 IAM/SCP 정책을 함께 고려하세요.
 - `security_groups` 규칙에서 `source.type`/`destination.type = security-group`일 때 `value`는 논리 SG 이름 또는 실제 SG ID(`sg-...`)를 사용할 수 있습니다.
 - Security Group rule 식별자와 Route Table association은 목록 순서와 무관한 key를 사용하므로, 단순 순서 변경만으로 리소스 주소 드리프트가 발생하지 않습니다.
+- `iam_roles.policies`, `iam_users.policies`는 정책 ARN뿐 아니라 `iam_policies`의 논리 이름도 사용할 수 있습니다.
+- IAM OIDC Provider: `iam_oidc_providers`로 IAM OpenID Connect Provider를 생성할 수 있고, `iam_roles.assume_role_policy`는 `templatestring()`으로 `${oidc_provider["<이름-또는-URL>"].arn}`(별칭 `${iam_oidc_provider["<이름-또는-URL>"].arn}`) 참조를 지원합니다.
+- `iam_policies.document_json`은 `${oidc_provider[...]}` / `${iam_oidc_provider[...]}`뿐 아니라 `${cloudfront_distribution["<name>"].arn}` 보간도 지원합니다. CloudFront ARN은 같은 apply에서 생성되는 관리형 `cloudfront_distributions` 결과를 먼저 사용하고, 필요 시 스펙의 `distribution_arn` 또는 `distribution_id`로 fallback 합니다. 정책 JSON에서 `${...}`를 리터럴로 써야 하면 `$${...}`로 이스케이프하세요.
+- CodeDeploy: `codedeploy_applications`, `codedeploy_deployment_groups`를 지원합니다. Deployment Group의 `service_role_name`은 `iam_roles` 논리 이름으로 해석되고, `autoscaling_groups`와 `load_balancer_info.target_groups`도 논리 이름 기반 참조를 지원합니다.
+- RDS Enhanced Monitoring: 리터럴 ARN은 `rds_instances.monitoring_role_arn`, IAM Role 이름 참조는 `rds_instances.monitoring_role_name`을 사용하세요(`iam_roles`/기존 IAM Role 조회 지원).
+- EC2 IAM Profile: EC2 trust(`ec2.amazonaws.com`)가 있는 IAM Role에 대해 동일 이름의 IAM Instance Profile을 자동 생성하므로 `ec2_instances.iam_role`에 Role 이름을 직접 사용할 수 있습니다.
 
 #### 기능별 메모
 
-- EKS Pod Identity: `role_arn`은 리터럴 ARN뿐 아니라 `iam_roles`/`eks_irsa_roles`의 role 이름도 지원합니다. Pod Identity role trust principal은 `pods.eks.amazonaws.com`이며 `sts:AssumeRole`, `sts:TagSession`을 포함해야 합니다.
-- Inline IAM policy: `iam_roles.inline_policies`, `eks_irsa_roles.inline_policies`는 `document_json` 또는 `document_url` 중 하나를 사용할 수 있습니다(예: `https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/refs/heads/main/docs/install/iam_policy.json`).
+- EKS Pod Identity: `role_name`(논리 role 이름) 또는 `role_arn`(리터럴 ARN) 사용을 권장합니다. Pod Identity role trust principal은 `pods.eks.amazonaws.com`이며 `sts:AssumeRole`, `sts:TagSession`을 포함해야 합니다.
+- IAM identity: 스펙 기반 워크플로우에서 `iam_roles`, `iam_users`, customer-managed `iam_policies`를 지원합니다.
+- Inline IAM policy: `iam_roles.inline_policies`, `iam_users.inline_policies`, `eks_irsa_roles.inline_policies`는 `document_json` 또는 `document_url` 중 하나를 사용할 수 있습니다(예: `https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/refs/heads/main/docs/install/iam_policy.json`).
 - Launch Template AMI: `image_id`는 `ami-*` 또는 AMI 이름을 받을 수 있고, AMI 이름 조회는 `image_owners`(기본 `["self"]`), `image_most_recent`(기본 `true`)로 제어합니다.
 - Launch Template user data: 우선순위는 `user_data_base64` > `user_data_file` > 인라인 `user_data`이며, `user_data_file`은 저장소 루트 기준 상대경로/절대경로를 모두 지원합니다.
 - Launch Template 보간: `vpc_security_groups`/`security_groups`는 `templatestring()`으로 `${security_group["<name>"]}`, `${cluster["<eks-cluster-name>"].security_group_id}`(별칭 `${eks_cluster["<eks-cluster-name>"].security_group_id}`)를 참조할 수 있습니다.
 - EC2 Auto Scaling Group: `ec2_auto_scaling_groups`는 관리 중인 `ec2_launch_templates`와 `ec2_alb_target_groups`를 논리 이름으로 참조할 수 있으며, 기존 Launch Template 이름/ID나 Target Group ARN도 그대로 받을 수 있습니다.
+- RDS Parameter Group: `rds_parameter_groups`로 `aws_db_parameter_group`를 관리할 수 있고, `rds_instances.parameter_group_name`은 관리 대상 parameter group 이름으로 해석됩니다.
+- ALB 리스너: `ec2_load_balancers.listeners`는 `default_action.type = fixed-response`를 지원하며, `fixed_response.content_type`, `fixed_response.status_code`, `fixed_response.message_body`(선택)를 지정할 수 있습니다. HTTPS 리스너 인증서는 `certificate_arn` 직접 지정 또는 `acm_certificate_name`(`acm_certificate_domain_name` 별칭)으로 `acm_certificates[].domain_name`을 참조해 사용할 수 있습니다. `default_action`을 생략하면 첫 번째 `target_groups` 항목으로 forward 액션이 기본 적용됩니다.
+- KMS 키 import 참조: `kms_keys`는 `existing_key_id`를 지원해 기존 Customer-managed KMS 키를 신규 생성 없이 참조할 수 있습니다. 기존 alias를 Terraform으로 관리하지 않으려면 `create_alias: false`를 사용하세요.
 - EC2 Auto Scaling instance refresh: `instance_refresh`로 rolling 교체를 정의할 수 있고, `triggers`, `min_healthy_percentage`, `instance_warmup` 같은 세부 옵션을 함께 지정할 수 있습니다.
 - EKS Add-on 보간: `eks_addons.configuration_values`도 위 cluster security-group 보간을 지원하며 `${subnet["<name>"]}`, `${security_group["<name>"]}`와 함께 사용할 수 있습니다.
 - EKS Add-on 배포 단계: `eks_addons.provision_phase`는 `before_nodegroup`, `after_nodegroup`, `auto`(기본값)를 지원합니다. `before_nodegroup` Add-on은 Node Group 이전, `after_nodegroup` Add-on은 Node Group 이후에 적용됩니다.
@@ -140,6 +150,7 @@ project:
 - EKS Helm 이미지 정책: `image_pull_policy`는 Helm `set`의 `image.pullPolicy` 축약 필드입니다(`set`에 `image.pullPolicy`가 이미 있으면 무시).
 - Kubernetes Service: `k8s_services`로 클러스터 내부 트래픽 및 TargetGroupBinding 백엔드로 사용하는 `Service` 리소스를 관리합니다.
 - Kubernetes TargetGroupBinding: `k8s_target_group_bindings`는 `target_group_arn` 또는 `target_group_name` 중 하나가 필요하며, 모듈은 `aws eks update-kubeconfig` + `kubectl apply/delete` 방식으로 `elbv2.k8s.aws/v1beta1` `TargetGroupBinding`를 반영합니다(AWS Load Balancer Controller CRD와 backend endpoint가 잡힌 Kubernetes Service 필요).
+- CloudFront Function/Distribution: `cloudfront_functions`로 `aws_cloudfront_function` 리소스(`code` 또는 `code_file`, runtime, publish)를 프로비저닝할 수 있고, `cloudfront_distributions`는 `function_name`(논리 이름) 또는 `function_arn`으로 함수를 연결할 수 있습니다. CloudFront 참조는 `web_acl_name`/`web_acl_arn`, `origin_access_control_name`/`origin_access_control_id`, `target_origin_name`/`target_origin_id`처럼 명시 쌍을 지원합니다. 캐시 동작 정책은 `*_policy_id`와 `*_policy_name`(`cache_policy_name`, `origin_request_policy_name`, `response_headers_policy_name`)을 모두 지원하며, `*_policy_name` 사용을 권장합니다. Managed 정책 이름은 `Managed-` 접두사 유무 모두 허용됩니다. `viewer_certificate`에서는 `acm_certificate_name`(또는 `acm_certificate_domain_name`)으로 `acm_certificates[].domain_name`의 ARN을 참조할 수 있습니다. 단, CloudFront 커스텀 도메인 인증서는 여전히 `us-east-1` 리전에 있어야 합니다.
 
 ### 4. 초기화 및 검증
 
@@ -275,6 +286,9 @@ terraform apply -var="spec_file=spec.vdh.stg.01.network.yaml"
 주로 네트워크 및 IAM 계층을 담당합니다.
 
 - IAM Roles
+- IAM Instance Profiles (EC2 trust role 대상)
+- IAM Users
+- IAM Policies
 - Network ACLs
 - VPC Endpoints
 - VPC Flow Logs

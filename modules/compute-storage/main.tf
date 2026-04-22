@@ -4,6 +4,7 @@ module "rds" {
   resources_by_type          = var.resources_by_type
   subnet_ids_by_name         = var.subnet_ids_by_name
   security_group_ids_by_name = var.security_group_ids_by_name
+  iam_role_arns_by_name      = var.iam_role_arns_by_name
 }
 
 module "ec2" {
@@ -25,10 +26,11 @@ module "launch_template" {
 module "alb" {
   source = "./alb"
 
-  resources_by_type          = var.resources_by_type
-  vpc_ids_by_name            = var.vpc_ids_by_name
-  subnet_ids_by_name         = var.subnet_ids_by_name
-  security_group_ids_by_name = var.security_group_ids_by_name
+  resources_by_type                  = var.resources_by_type
+  vpc_ids_by_name                    = var.vpc_ids_by_name
+  subnet_ids_by_name                 = var.subnet_ids_by_name
+  security_group_ids_by_name         = var.security_group_ids_by_name
+  acm_certificate_arns_by_domain_name = var.acm_certificate_arns_by_domain_name
 }
 
 module "asg" {
@@ -39,6 +41,15 @@ module "asg" {
   launch_template_names_by_key           = module.launch_template.names_by_key
   launch_template_latest_versions_by_key = module.launch_template.latest_versions_by_key
   alb_target_group_arns_by_key           = module.alb.target_group_arns_by_key
+}
+
+module "codedeploy" {
+  source = "./codedeploy"
+
+  resources_by_type               = var.resources_by_type
+  iam_role_arns_by_name           = var.iam_role_arns_by_name
+  auto_scaling_group_names_by_key = module.asg.names_by_key
+  alb_target_group_names_by_key   = module.alb.target_group_names_by_key
 }
 
 module "s3" {

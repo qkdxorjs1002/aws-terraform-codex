@@ -10,11 +10,21 @@ project:
   # - ManagedBy: project.managed_by
   # - Maintainer: project.maintainer
   # Name tags are auto-generated from each resource identifier.
+  #
+  # Reference naming convention (recommended):
+  # - Use *_id when you pass a physical AWS ID.
+  # - Use *_name when you pass a logical/resource name.
+  # - Use *_arn when you pass an ARN.
+  # - For list references, prefer *_ids and *_names.
+  # Backward-compatible legacy keys are still accepted, but explicit keys are preferred.
 
   resources:
     # iam_roles:
     # - name: Logical IAM role name to reference from other resources in this spec.
-    # - policies: AWS managed policy ARNs attached to the role.
+    # - policies: AWS managed policy ARN or logical policy name from iam_policies.
+    # - assume_role_policy supports templatestring() interpolation with:
+    #   ${oidc_provider["<iam-oidc-provider-name-or-url>"].arn}
+    #   (alias: ${iam_oidc_provider["<iam-oidc-provider-name-or-url>"].arn})
     - iam_roles:
         - name: "<iam-role-name>"
           description: "<iam-role-description>"
@@ -29,6 +39,49 @@ project:
               document_json: "{}" # JSON string policy document
               # or fetch policy JSON from URL:
               # document_url: "https://example.com/policy.json"
+    # iam_policies:
+    # - name: Logical IAM policy name to reference from iam_roles/iam_users.
+    # - Exactly one of document_json or document_url should be provided.
+    # - document_json supports templatestring() interpolation with:
+    #   ${oidc_provider["<iam-oidc-provider-name-or-url>"].arn}
+    #   (alias: ${iam_oidc_provider["<iam-oidc-provider-name-or-url>"].arn})
+    #   ${cloudfront_distribution["<cloudfront-distribution-name>"].arn}
+    #   (requires cloudfront_distributions[].distribution_id or distribution_arn for stable ARN resolution)
+    - iam_policies:
+        - name: "<iam-policy-name>"
+          description: "<iam-policy-description>"
+          path: "/"
+          document_json: "{}" # JSON string policy document
+          # or fetch policy JSON from URL:
+          # document_url: "https://example.com/policy.json"
+    # iam_users:
+    # - name: Logical IAM user name.
+    # - policies: AWS managed policy ARN or logical policy name from iam_policies.
+    - iam_users:
+        - name: "<iam-user-name>"
+          path: "/"
+          permissions_boundary: "arn:aws:iam::<account-id>:policy/<permissions-boundary-policy>"
+          force_destroy: false
+          policies:
+            - "arn:aws:iam::aws:policy/<policy-name>"
+            - "<iam-policy-name>"
+          inline_policies:
+            - name: "<inline-policy-name>"
+              document_json: "{}" # JSON string policy document
+              # or fetch policy JSON from URL:
+              # document_url: "https://example.com/policy.json"
+    # iam_oidc_providers:
+    # - name: Logical IAM OIDC provider identifier.
+    # - url: OIDC issuer URL (for example GitHub Actions).
+    # - client_id_list: Audience values trusted by AWS STS.
+    # - thumbprint_list: Optional certificate thumbprints.
+    - iam_oidc_providers:
+        - name: "github-actions"
+          url: "https://token.actions.githubusercontent.com"
+          client_id_list:
+            - "sts.amazonaws.com"
+          thumbprint_list:
+            - "6938fd4d98bab03faadb97b34396831e3780aea1"
     # vpcs:
     # - name: Logical VPC identifier used by dependent resources.
     # - cidr: IPv4 CIDR range for the VPC.
@@ -214,6 +267,17 @@ project:
           subnets:
             - "<private-db-subnet-1>"
             - "<private-db-subnet-2>"
+    # rds_parameter_groups:
+    # - name/family: DB parameter group name and engine family (for example postgres17).
+    # - parameters[]: Optional parameter overrides with value and apply_method.
+    - rds_parameter_groups:
+        - name: "<rds-parameter-group-name>"
+          family: "postgres17"
+          description: "<rds-parameter-group-description>"
+          parameters:
+            - name: "log_statement"
+              value: "ddl"
+              apply_method: "pending-reboot" # immediate | pending-reboot
     # rds_instances:
     # - name/identifier: Logical and AWS DB identifiers.
     # - engine/engine_version: DB engine family and exact version.
@@ -256,6 +320,7 @@ project:
           maintenance_window: "sun:05:00-sun:06:00"
           monitoring_interval: 60
           monitoring_role_arn: "arn:aws:iam::<account-id>:role/<rds-monitoring-role>"
+          # monitoring_role_name: "<rds-monitoring-role-name>"
           performance_insights_enabled: true
           performance_insights_kms_key_id: "arn:aws:kms:<region>:<account-id>:key/<kms-key-id>"
           parameter_group_name: "<db-parameter-group-name>"
@@ -268,6 +333,8 @@ project:
     # ec2_instances:
     # - name: Logical EC2 instance identifier.
     # - subnet/iam_role/security_groups: Network and IAM references.
+    #   iam_role accepts an IAM role name; for EC2-trusted roles, a same-name
+    #   IAM instance profile is auto-created and attached.
     # - ami/architecture/instance_type: Image and instance sizing details.
     # - connection_type: Intended access model (public/private).
     # - storage.root/storage.app: Root and additional EBS volume settings.
@@ -313,6 +380,7 @@ project:
     # - template_name: Optional AWS launch template name override (defaults to name).
     # - image_id/instance_type/key_name: Optional EC2 launch defaults used by consumers.
     #   image_id accepts either an AMI ID (ami-*) or an AMI name for lookup.
+    # - iam_instance_profile_name: IAM instance profile name for launched instances.
     # - image_owners/image_most_recent: Optional AMI lookup controls when image_id is a name.
     # - user_data_file/user_data/user_data_base64: Optional boot script inputs.
     #   Priority is user_data_base64 > user_data_file > user_data.
@@ -399,11 +467,49 @@ project:
               min_healthy_percentage: 50
               instance_warmup: 300
 
+    # codedeploy_applications:
+    # - name: Logical CodeDeploy application name.
+    # - compute_platform: Deployment platform (Server | ECS | Lambda).
+    - codedeploy_applications:
+        - name: "<codedeploy-application-name>"
+          compute_platform: "Server"
+
+    # codedeploy_deployment_groups:
+    # - name/application: Deployment group name and CodeDeploy application reference.
+    # - service_role_name/service_role_arn: IAM role used by CodeDeploy.
+    # - autoscaling_groups: Auto Scaling Groups by logical name or AWS ASG name.
+    # - deployment_style.*: In-place vs blue/green and traffic control mode.
+    # - auto_rollback_configuration.*: Automatic rollback policy.
+    # - load_balancer_info.target_groups: Target groups by logical name or AWS target group name.
+    # - ec2_tag_filters/ec2_tag_set: Optional EC2 instance matching filters.
+    - codedeploy_deployment_groups:
+        - name: "<codedeploy-deployment-group-name>"
+          application: "<codedeploy-application-name>"
+          service_role_name: "<codedeploy-service-role-name>"
+          deployment_config_name: "CodeDeployDefault.OneAtATime"
+          autoscaling_groups:
+            - "<asg-name>"
+          deployment_style:
+            deployment_type: "IN_PLACE" # IN_PLACE | BLUE_GREEN
+            deployment_option: "WITHOUT_TRAFFIC_CONTROL" # WITHOUT_TRAFFIC_CONTROL | WITH_TRAFFIC_CONTROL
+          auto_rollback_configuration:
+            enabled: true
+            events:
+              - "DEPLOYMENT_FAILURE"
+          load_balancer_info:
+            target_groups:
+              - "<target-group-name>"
+
     # ec2_load_balancers:
     # - name: Logical ALB/NLB identifier.
     # - vpc/subnets/security_groups: Network placement and security references.
     # - scheme/ip_address_type: Exposure model and IP family.
-    # - listeners[]: Listener protocol/port and referenced target groups.
+    # - listeners[]: Listener protocol/port and action definition.
+    #   - Forward action (default): set target_groups[].
+    #   - HTTPS certificate: set certificate_arn explicitly, or use
+    #     acm_certificate_name/acm_certificate_domain_name to resolve from
+    #     acm_certificates[].domain_name.
+    #   - Fixed response action: set default_action.type=fixed-response and fixed_response fields.
     - ec2_load_balancers:
         - name: "<alb-name>"
           vpc: "<vpc-name>"
@@ -427,6 +533,18 @@ project:
               port: 80
               target_groups:
                 - "<target-group-name>"
+            - protocol: "HTTPS"
+              port: 443
+              ssl_policy: "ELBSecurityPolicy-TLS13-1-2-Res-PQ-2025-09"
+              acm_certificate_name: "<acm-certificate-domain-name>"
+              # or explicit ARN:
+              # certificate_arn: "arn:aws:acm:<region>:<account-id>:certificate/<certificate-id>"
+              default_action:
+                type: "fixed-response" # forward | fixed-response
+                fixed_response:
+                  content_type: "text/plain" # text/plain | text/css | text/html | application/javascript | application/json
+                  status_code: "503"
+                  message_body: "Service unavailable"
     # ec2_alb_target_groups:
     # - name: Logical target group identifier.
     # - type/vpc/protocol/port: Target model and traffic settings.
@@ -503,7 +621,9 @@ project:
     # eks_clusters:
     # - name/vpc/kubernetes_version: Cluster identity, network, and control plane version.
     # - endpoint_access.*: Private/public API access and allowed CIDRs.
-    # - subnet_ids/security_groups: Subnet and SG references for control plane networking.
+    # - subnet_ids/subnet_names: Subnet references for control plane networking.
+    # - security_group_ids/security_group_names: SG references for control plane networking.
+    #   (legacy security_groups is still accepted)
     # - cluster_logging.*: Enabled control plane log types and retention.
     # - encryption.*: Secrets encryption settings and KMS key ARN.
     # - iam.*: Cluster IAM role identifiers and ARN.
@@ -520,10 +640,10 @@ project:
             public: true
             public_access_cidrs:
               - "0.0.0.0/0"
-          subnet_ids:
+          subnet_names:
             - "<private-subnet-1>"
             - "<private-subnet-2>"
-          security_groups:
+          security_group_names:
             - "<eks-cluster-sg-name>"
           cluster_logging:
             enabled_types:
@@ -543,7 +663,7 @@ project:
             cluster_role_arn: "arn:aws:iam::<account-id>:role/<eks-cluster-role-name>"
     # eks_node_groups:
     # - name/cluster: Node group identity and parent EKS cluster reference.
-    # - subnet_ids: Subnets where worker nodes are provisioned.
+    # - subnet_ids/subnet_names: Subnets where worker nodes are provisioned.
     # - iam_role_name/iam_role_arn: IAM role identity used by worker nodes.
     # - ami_type/capacity_type/instance_types: Worker OS image, purchase model, and instance shapes.
     # - scaling.*: Desired/min/max node counts.
@@ -556,7 +676,7 @@ project:
     - eks_node_groups:
         - name: "<eks-nodegroup-name>"
           cluster: "<eks-cluster-name>"
-          subnet_ids:
+          subnet_names:
             - "<private-subnet-1>"
             - "<private-subnet-2>"
           iam_role_name: "<eks-nodegroup-role-name>"
@@ -588,18 +708,18 @@ project:
           remote_access:
             enabled: false
             ec2_ssh_key: "<optional-keypair-name>"
-            source_security_groups:
+            source_security_group_names:
               - "<bastion-sg-name>"
     # eks_fargate_profiles:
     # - name/cluster: Fargate profile identity and parent cluster.
-    # - subnet_ids: Subnets used for Fargate pod networking.
+    # - subnet_ids/subnet_names: Subnets used for Fargate pod networking.
     # - pod_execution_role_name: IAM role used by Fargate runtime.
     # - selectors[]: Namespace/label selectors determining which pods run on Fargate.
     # - tags: Resource tags for the profile.
     - eks_fargate_profiles:
         - name: "<eks-fargate-profile-name>"
           cluster: "<eks-cluster-name>"
-          subnet_ids:
+          subnet_names:
             - "<private-subnet-1>"
             - "<private-subnet-2>"
           pod_execution_role_name: "<eks-fargate-pod-execution-role-name>"
@@ -851,12 +971,12 @@ project:
 
     # eks_pod_identity_associations:
     # - cluster/namespace/service_account_name: Kubernetes identity target.
-    # - role_arn: IAM role ARN or IAM role logical name (from iam_roles/eks_irsa_roles).
+    # - role_name/role_arn: IAM role logical name or ARN (from iam_roles/eks_irsa_roles).
     - eks_pod_identity_associations:
         - cluster: "<eks-cluster-name>"
           namespace: "default"
           service_account_name: "<service-account-name>"
-          role_arn: "<pod-identity-role-name-or-arn>"
+          role_name: "<pod-identity-role-name>"
 
     # waf_web_acls:
     # - name/scope/default_action: WAF ACL identity, scope, and default allow/block behavior.
@@ -894,16 +1014,42 @@ project:
           signing_behavior: "always" # always | never | no-override
           signing_protocol: "sigv4"
 
+    # cloudfront_functions:
+    # - name/runtime/publish/comment: Function identity and runtime behavior.
+    # - code: Inline JavaScript source for the function.
+    # - code_file: Optional JS source path (absolute or repo-root relative). Used instead of code when set.
+    - cloudfront_functions:
+        - name: "<cloudfront-function-name>"
+          runtime: "cloudfront-js-1.0" # cloudfront-js-1.0 | cloudfront-js-2.0
+          publish: true
+          comment: "<cloudfront-function-description>"
+          code: |
+            function handler(event) {
+              return event.request;
+            }
+
     # cloudfront_distributions:
     # - name/enabled/aliases/comment/price_class: Distribution identity and general behavior.
-    # - web_acl: Referenced WAF ACL logical name.
+    # - distribution_id/distribution_arn: Optional explicit distribution identity for cross-resource interpolation
+    #   (for example iam_policies.document_json -> ${cloudfront_distribution["<name>"].arn}).
+    # - web_acl_name/web_acl_arn: Referenced WAF ACL logical name or ARN.
     # - origins[]: Origin definitions (domain, type, path, OAC, custom origin settings).
-    # - default_cache_behavior.*: Primary caching, protocol, and policy settings.
+    #   - origins.domain_name: Supports literal domain or resource name (for example ALB name / S3 bucket name).
+    #   - origins.origin_access_control_id/origin_access_control_name: OAC reference.
+    # - default_cache_behavior.*: Primary caching, protocol, policy, and optional function associations.
+    #   - target_origin_id/target_origin_name: Supports origin id and name/domain-based references.
+    #   - *_policy_id/*_policy_name: Cache/origin-request/response-headers policy reference by ID or PolicyName.
+    #   - function_associations[]: Set either function_name (managed CloudFront Function logical name) or function_arn.
+    # - cache_behaviors[]: Ordered cache behaviors for path-based routing.
     # - custom_error_responses[]: Custom error mapping and caching behavior.
     # - viewer_certificate.*: TLS certificate and minimum protocol settings.
+    #   - acm_certificate_arn: Explicit ACM certificate ARN.
+    #   - acm_certificate_name/acm_certificate_domain_name: Logical reference to
+    #     acm_certificates[].domain_name (resolved to its ARN).
     # - logging.*: Access log destination and format options.
     - cloudfront_distributions:
         - name: "<cloudfront-distribution-name>"
+          distribution_id: "<optional-existing-distribution-id>"
           enabled: true
           is_ipv6_enabled: true
           default_root_object: "index.html"
@@ -914,13 +1060,13 @@ project:
           http_version: "http2" # http1.1 | http2 | http2and3 | http3
           wait_for_deployment: true
           retain_on_delete: false
-          web_acl: "<waf-web-acl-name>"
+          web_acl_name: "<waf-web-acl-name>"
           origins:
             - id: "<origin-id>"
-              domain_name: "<origin-domain-name>"
+              domain_name: "<origin-domain-or-resource-name>"
               type: "s3" # s3 | custom
               origin_path: ""
-              origin_access_control: "<cloudfront-oac-name>"
+              origin_access_control_name: "<cloudfront-oac-name>"
               custom_origin_config:
                 http_port: 80
                 https_port: 443
@@ -928,7 +1074,7 @@ project:
                 origin_ssl_protocols:
                   - "TLSv1.2"
           default_cache_behavior:
-            target_origin_id: "<origin-id>"
+            target_origin_name: "<origin-id-or-name>"
             viewer_protocol_policy: "redirect-to-https" # allow-all | https-only | redirect-to-https
             allowed_methods:
               - "GET"
@@ -937,10 +1083,36 @@ project:
             cached_methods:
               - "GET"
               - "HEAD"
-            cache_policy_id: "<cache-policy-id>"
-            origin_request_policy_id: "<origin-request-policy-id>"
-            response_headers_policy_id: "<response-headers-policy-id>"
+            # Managed policy names are accepted with or without the "Managed-" prefix.
+            cache_policy_name: "<cache-policy-name>"
+            origin_request_policy_name: "<origin-request-policy-name>"
+            response_headers_policy_name: "<response-headers-policy-name>"
             compress: true
+            function_associations:
+              - event_type: "viewer-request"
+                function_name: "<cloudfront-function-name>"
+                # or explicit ARN:
+                # function_arn: "arn:aws:cloudfront::<account-id>:function/<function-name>"
+          cache_behaviors:
+            - path_pattern: "/api/*"
+              target_origin_name: "<origin-id-or-name>"
+              viewer_protocol_policy: "redirect-to-https"
+              allowed_methods:
+                - "GET"
+                - "HEAD"
+                - "OPTIONS"
+              cached_methods:
+                - "GET"
+                - "HEAD"
+              cache_policy_name: "<cache-policy-name>"
+              origin_request_policy_name: "<optional-origin-request-policy-name>"
+              response_headers_policy_name: "<optional-response-headers-policy-name>"
+              compress: true
+              function_associations:
+                - event_type: "viewer-request"
+                  function_name: "<cloudfront-function-name>"
+                  # or explicit ARN:
+                  # function_arn: "arn:aws:cloudfront::<account-id>:function/<function-name>"
           custom_error_responses:
             - error_code: 404
               response_code: 404
@@ -951,6 +1123,9 @@ project:
               restriction_type: "none" # none | whitelist | blacklist
               locations: []
           viewer_certificate:
+            acm_certificate_name: "<acm-certificate-domain-name>"
+            # or explicit ARN:
+            # (CloudFront custom domain certificates must be in us-east-1)
             acm_certificate_arn: "arn:aws:acm:us-east-1:<account-id>:certificate/<certificate-id>"
             ssl_support_method: "sni-only"
             minimum_protocol_version: "TLSv1.2_2021"
@@ -1025,7 +1200,8 @@ project:
     # ecs_services:
     # - name/cluster/task_definition_family: ECS service identity and deployment source.
     # - launch_type/desired_count/enable_execute_command/deployment_controller: Service runtime and deployment model.
-    # - network_configuration.*: Subnets, SGs, and public IP assignment.
+    # - network_configuration.*: Subnets/SGs/public IP assignment.
+    #   Prefer subnet_ids/subnet_names and security_group_ids/security_group_names.
     # - load_balancer.*: Target group and container traffic mapping.
     # - deployment.*: Deployment safety thresholds and rollback behavior.
     # - service_discovery.*: Cloud Map registration settings.
@@ -1042,10 +1218,10 @@ project:
           force_new_deployment: false
           deployment_controller: "ECS" # ECS | CODE_DEPLOY | EXTERNAL
           network_configuration:
-            subnets:
+            subnet_names:
               - "<private-subnet-1>"
               - "<private-subnet-2>"
-            security_groups:
+            security_group_names:
               - "<security-group-name>"
             assign_public_ip: false
           load_balancer:
@@ -1133,6 +1309,8 @@ project:
 
     # kms_keys:
     # - alias/description: KMS key alias and description.
+    # - existing_key_id: Optional existing KMS key ID/ARN to import by reference without creating a new key.
+    # - create_alias: Whether Terraform should manage the alias resource (default: true).
     # - enable_key_rotation: Automatic annual key rotation toggle.
     # - deletion_window_in_days: Pending deletion window for scheduled key deletion.
     # - key_usage/multi_region: Key usage mode and multi-region behavior.
@@ -1141,6 +1319,8 @@ project:
     - kms_keys:
         - alias: "alias/<kms-key-alias>"
           description: "<kms-key-description>"
+          existing_key_id: "<optional-existing-key-id-or-arn>"
+          create_alias: true
           enabled: true
           enable_key_rotation: true
           deletion_window_in_days: 30
@@ -1192,6 +1372,7 @@ project:
     # - reserved_concurrent_executions: Concurrency limit (-1 means unreserved).
     # - role_arn: Lambda execution role ARN.
     # - vpc_config.*: Subnets and security groups for VPC-enabled Lambda.
+    #   Prefer subnet_ids/subnet_names and security_group_ids/security_group_names.
     # - environment_variables: Function environment variable map.
     # - dead_letter_target_arn: DLQ target ARN for async invocation failures.
     # - tracing_mode/log_retention_days: X-Ray tracing mode and log retention.
@@ -1216,10 +1397,10 @@ project:
             - "arn:aws:lambda:<region>:<account-id>:layer:<layer-name>:<version>"
           kms_key_arn: "arn:aws:kms:<region>:<account-id>:key/<kms-key-id>"
           vpc_config:
-            subnet_ids:
+            subnet_names:
               - "<private-subnet-1>"
               - "<private-subnet-2>"
-            security_group_ids:
+            security_group_names:
               - "<security-group-name>"
           file_system_config:
             arn: "arn:aws:elasticfilesystem:<region>:<account-id>:access-point/<access-point-id>"
@@ -1387,7 +1568,7 @@ project:
     # elasticache_replication_groups:
     # - replication_group_id/description: ElastiCache replication group identity.
     # - engine/engine_version/node_type/parameter_group_name/port: Redis engine and runtime profile.
-    # - subnet_group_name/security_group_ids: Network placement and firewall controls.
+    # - subnet_group_name/security_group_ids/security_group_names: Network placement and firewall controls.
     # - automatic_failover_enabled/multi_az_enabled/num_cache_clusters: Availability and topology settings.
     # - at_rest_encryption_enabled/transit_encryption_enabled/auth_token: Security controls.
     # - snapshot_retention_limit/maintenance_window: Backup retention and maintenance schedule.
@@ -1401,7 +1582,7 @@ project:
           parameter_group_name: "default.redis7"
           port: 6379
           subnet_group_name: "<elasticache-subnet-group-name>"
-          security_group_ids:
+          security_group_names:
             - "<security-group-name>"
           automatic_failover_enabled: true
           multi_az_enabled: true

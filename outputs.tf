@@ -104,3 +104,38 @@ output "security_groups" {
     }
   }
 }
+
+output "iam_roles" {
+  description = "Created IAM roles"
+  value       = module.network_identity.iam_role_arns_by_name
+}
+
+output "iam_users" {
+  description = "Created IAM users"
+  value       = module.network_identity.iam_user_arns_by_name
+}
+
+output "iam_policies" {
+  description = "Created IAM policies"
+  value       = module.network_identity.iam_policy_arns_by_name
+}
+
+output "iam_oidc_providers" {
+  description = "Created IAM OIDC providers"
+  value       = module.network_identity.iam_oidc_provider_arns_by_key
+}
+
+output "codedeploy_applications" {
+  description = "Created CodeDeploy applications"
+  value       = module.compute_storage.codedeploy_application_arns_by_name
+}
+
+output "codedeploy_deployment_groups" {
+  description = "Created CodeDeploy deployment groups"
+  value       = module.compute_storage.codedeploy_deployment_group_names_by_key
+}
+
+output "acm_certificates" {
+  description = "Created ACM certificates keyed by domain name"
+  value       = module.app_platform.acm_certificate_arns_by_domain_name
+}

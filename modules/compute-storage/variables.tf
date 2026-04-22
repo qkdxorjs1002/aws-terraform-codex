@@ -18,7 +18,17 @@ variable "security_group_ids_by_name" {
   default = {}
 }
 
+variable "iam_role_arns_by_name" {
+  type    = map(string)
+  default = {}
+}
+
 variable "eks_cluster_attributes_by_name" {
   type    = map(any)
+  default = {}
+}
+
+variable "acm_certificate_arns_by_domain_name" {
+  type    = map(string)
   default = {}
 }

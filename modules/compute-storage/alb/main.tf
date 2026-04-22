@@ -12,12 +12,32 @@ locals {
   ec2_lb_listeners = flatten([
     for load_balancer_name, load_balancer in local.ec2_load_balancers : [
       for idx, listener in try(load_balancer.listeners, []) : {
-        key                = "${load_balancer_name}:${idx}"
-        load_balancer_name = load_balancer_name
-        listener           = listener
+        key                    = "${load_balancer_name}:${idx}"
+        load_balancer_name     = load_balancer_name
+        listener               = listener
+        action_type            = lower(try(listener.default_action.type, "forward"))
+        target_group_reference = try(listener.default_action.target_group, try(listener.target_groups[0], null))
+        fixed_response         = try(listener.default_action.fixed_response, null)
       }
     ]
   ])
+
+  # listener.acm_certificate_name maps to acm_certificates[].domain_name.
+  alb_listener_certificate_arns_by_key = {
+    for listener in local.ec2_lb_listeners :
+    listener.key => try(coalesce(
+      try(listener.listener.certificate_arn, null),
+      lookup(
+        var.acm_certificate_arns_by_domain_name,
+        trimspace(tostring(coalesce(
+          try(listener.listener.acm_certificate_name, null),
+          try(listener.listener.acm_certificate_domain_name, null),
+          ""
+        ))),
+        null
+      )
+    ), null)
+  }
 }
 
 resource "aws_lb_target_group" "managed" {
@@ -25,9 +45,13 @@ resource "aws_lb_target_group" "managed" {
 
   name        = each.value.name
   target_type = try(each.value.type, "instance")
-  vpc_id      = lookup(var.vpc_ids_by_name, each.value.vpc, each.value.vpc)
-  protocol    = try(each.value.protocol, "HTTP")
-  port        = try(each.value.port, 80)
+  vpc_id = lookup(
+    var.vpc_ids_by_name,
+    coalesce(try(each.value.vpc_id, null), try(each.value.vpc_name, null), try(each.value.vpc, null)),
+    coalesce(try(each.value.vpc_id, null), try(each.value.vpc_name, null), try(each.value.vpc, null))
+  )
+  protocol = try(each.value.protocol, "HTTP")
+  port     = try(each.value.port, 80)
 
   deregistration_delay = try(each.value.deregistration_delay, 300)
   slow_start           = try(each.value.slow_start, 0)
@@ -73,12 +97,23 @@ resource "aws_lb" "managed" {
   ip_address_type    = try(each.value.ip_address_type, "ipv4")
 
   subnets = [
-    for subnet_info in try(each.value.subnets, []) :
+    for subnet_info in distinct(compact(concat(
+      try(each.value.subnet_ids, []),
+      try(each.value.subnet_names, []),
+      [
+        for subnet in try(each.value.subnets, []) :
+        try(subnet.subnet, subnet)
+      ]
+    ))) :
     lookup(var.subnet_ids_by_name, try(subnet_info.subnet, subnet_info), try(subnet_info.subnet, subnet_info))
   ]
 
   security_groups = try(each.value.type, "application") == "application" ? [
-    for security_group in try(each.value.security_groups, []) :
+    for security_group in distinct(compact(concat(
+      try(each.value.security_group_ids, []),
+      try(each.value.security_group_names, []),
+      try(each.value.security_groups, [])
+    ))) :
     lookup(var.security_group_ids_by_name, security_group, security_group)
   ] : null
 
@@ -114,14 +149,38 @@ resource "aws_lb_listener" "managed" {
   protocol          = try(each.value.listener.protocol, "HTTP")
   port              = try(each.value.listener.port, 80)
   ssl_policy        = try(each.value.listener.ssl_policy, null)
-  certificate_arn   = try(each.value.listener.certificate_arn, null)
+  certificate_arn   = lookup(local.alb_listener_certificate_arns_by_key, each.key, null)
 
   default_action {
-    type = "forward"
-    target_group_arn = lookup(
-      { for name, target_group in aws_lb_target_group.managed : name => target_group.arn },
-      try(each.value.listener.target_groups[0], ""),
-      try(each.value.listener.target_groups[0], "")
-    )
+    type = each.value.action_type
+    target_group_arn = each.value.action_type == "forward" ? (
+      try(coalesce(
+        try(each.value.listener.default_action.target_group_arn, null),
+        try(each.value.listener.default_action.target_group_name, null),
+        try(each.value.target_group_reference, null)
+        ), null) == null ? null : lookup(
+        { for name, target_group in aws_lb_target_group.managed : name => target_group.arn },
+        try(coalesce(
+          try(each.value.listener.default_action.target_group_arn, null),
+          try(each.value.listener.default_action.target_group_name, null),
+          try(each.value.target_group_reference, null)
+        ), null),
+        try(coalesce(
+          try(each.value.listener.default_action.target_group_arn, null),
+          try(each.value.listener.default_action.target_group_name, null),
+          try(each.value.target_group_reference, null)
+        ), null)
+      )
+    ) : null
+
+    dynamic "fixed_response" {
+      for_each = each.value.action_type == "fixed-response" ? [try(each.value.fixed_response, {})] : []
+
+      content {
+        content_type = try(fixed_response.value.content_type, "text/plain")
+        message_body = try(fixed_response.value.message_body, null)
+        status_code  = tostring(try(fixed_response.value.status_code, "503"))
+      }
+    }
   }
 }

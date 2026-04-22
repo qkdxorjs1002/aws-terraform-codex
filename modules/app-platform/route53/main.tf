@@ -21,7 +21,11 @@ resource "aws_route53_zone" "managed" {
     for_each = try(each.value.private_zone, false) ? try(each.value.vpc_associations, []) : []
 
     content {
-      vpc_id     = lookup(var.vpc_ids_by_name, vpc.value.vpc, vpc.value.vpc)
+      vpc_id = lookup(
+        var.vpc_ids_by_name,
+        coalesce(try(vpc.value.vpc_id, null), try(vpc.value.vpc_name, null), try(vpc.value.vpc, null)),
+        coalesce(try(vpc.value.vpc_id, null), try(vpc.value.vpc_name, null), try(vpc.value.vpc, null))
+      )
       vpc_region = try(vpc.value.region, null)
     }
   }

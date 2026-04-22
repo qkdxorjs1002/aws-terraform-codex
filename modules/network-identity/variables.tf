@@ -22,3 +22,8 @@ variable "security_group_ids_by_name" {
   type    = map(string)
   default = {}
 }
+
+variable "cloudfront_distribution_arns_by_name" {
+  type    = map(string)
+  default = {}
+}

@@ -42,15 +42,24 @@ resource "aws_lambda_function" "managed" {
   }
 
   dynamic "vpc_config" {
-    for_each = length(try(each.value.vpc_config.subnet_ids, [])) > 0 ? [each.value.vpc_config] : []
+    for_each = length(concat(
+      try(each.value.vpc_config.subnet_ids, []),
+      try(each.value.vpc_config.subnet_names, [])
+    )) > 0 ? [each.value.vpc_config] : []
 
     content {
       subnet_ids = [
-        for subnet in try(vpc_config.value.subnet_ids, []) :
+        for subnet in distinct(compact(concat(
+          try(vpc_config.value.subnet_ids, []),
+          try(vpc_config.value.subnet_names, [])
+        ))) :
         lookup(var.subnet_ids_by_name, subnet, subnet)
       ]
       security_group_ids = [
-        for security_group in try(vpc_config.value.security_group_ids, []) :
+        for security_group in distinct(compact(concat(
+          try(vpc_config.value.security_group_ids, []),
+          try(vpc_config.value.security_group_names, [])
+        ))) :
         lookup(var.security_group_ids_by_name, security_group, security_group)
       ]
     }

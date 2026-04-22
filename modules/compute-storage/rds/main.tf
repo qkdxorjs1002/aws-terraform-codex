@@ -4,6 +4,11 @@ locals {
     subnet_group.name => subnet_group
   }
 
+  rds_parameter_groups = {
+    for parameter_group in try(var.resources_by_type.rds_parameter_groups, []) :
+    parameter_group.name => parameter_group
+  }
+
   rds_instances = {
     for instance in try(var.resources_by_type.rds_instances, []) :
     instance.name => instance
@@ -16,9 +21,38 @@ resource "aws_db_subnet_group" "managed" {
   name        = each.value.name
   description = try(each.value.description, each.value.name)
   subnet_ids = [
-    for subnet in try(each.value.subnets, []) :
+    for subnet in distinct(compact(concat(
+      try(each.value.subnet_ids, []),
+      try(each.value.subnet_names, []),
+      try(each.value.subnets, [])
+    ))) :
     lookup(var.subnet_ids_by_name, subnet, subnet)
   ]
+
+  tags = merge(
+    {
+      Name = each.value.name
+    },
+    try(each.value.tags, {})
+  )
+}
+
+resource "aws_db_parameter_group" "managed" {
+  for_each = local.rds_parameter_groups
+
+  name        = each.value.name
+  family      = each.value.family
+  description = try(each.value.description, each.value.name)
+
+  dynamic "parameter" {
+    for_each = try(each.value.parameters, [])
+
+    content {
+      name         = parameter.value.name
+      value        = tostring(parameter.value.value)
+      apply_method = try(parameter.value.apply_method, null)
+    }
+  }
 
   tags = merge(
     {
@@ -56,7 +90,11 @@ resource "aws_db_instance" "managed" {
   )
 
   vpc_security_group_ids = [
-    for security_group in try(each.value.security_groups, []) :
+    for security_group in distinct(compact(concat(
+      try(each.value.security_group_ids, []),
+      try(each.value.security_group_names, []),
+      try(each.value.security_groups, [])
+    ))) :
     lookup(var.security_group_ids_by_name, security_group, security_group)
   ]
 
@@ -71,12 +109,27 @@ resource "aws_db_instance" "managed" {
   maintenance_window      = try(each.value.maintenance_window, null)
 
   monitoring_interval = try(each.value.monitoring_interval, 0)
-  monitoring_role_arn = try(each.value.monitoring_role_arn, null)
+  monitoring_role_arn = coalesce(
+    try(trimspace(each.value.monitoring_role_arn), "") != "" ? trimspace(each.value.monitoring_role_arn) : null,
+    lookup(
+      var.iam_role_arns_by_name,
+      try(trimspace(each.value.monitoring_role_name), ""),
+      try(each.value.monitoring_role_name, null)
+    )
+  )
 
   performance_insights_enabled    = try(each.value.performance_insights_enabled, false)
   performance_insights_kms_key_id = try(each.value.performance_insights_kms_key_id, null)
 
-  parameter_group_name = try(each.value.parameter_group_name, null)
+  parameter_group_name = (
+    try(trimspace(each.value.parameter_group_name), "") == "" ?
+    null :
+    lookup(
+      { for name, parameter_group in aws_db_parameter_group.managed : name => parameter_group.name },
+      trimspace(each.value.parameter_group_name),
+      trimspace(each.value.parameter_group_name)
+    )
+  )
   option_group_name    = try(each.value.option_group_name, null)
 
   auto_minor_version_upgrade = try(each.value.auto_minor_version_upgrade, true)

@@ -110,7 +110,7 @@ Use this checklist while editing:
 
 #### Core Rules
 
-- References are name-based. For example, use `vpc: "main-vpc"` instead of raw IDs.
+- Prefer explicit reference keys: use `*_id` for IDs, `*_name` for names, and `*_arn` for ARNs (`*_ids`/`*_names` for lists). Legacy mixed keys are still supported for compatibility.
 - If a referenced network resource is not managed in the current spec, Terraform resolves it from existing AWS resources by `Name` tag (security groups: group name lookup).
 - `project.environment`, `project.managed_by`, and `project.maintainer` are required. They are applied globally via provider `default_tags` as `Environment`, `ManagedBy`, and `Maintainer`.
 - `Name` tags are auto-derived from each resource logical identifier (`name`, `family`, `domain_name`, `alias`, and similar), so `tags.Name` usually should not be duplicated.
@@ -118,15 +118,25 @@ Use this checklist while editing:
 - For stricter guardrails, consider IAM/SCP controls that deny update/delete when `aws:ResourceTag/ManagedBy` does not match your project value.
 - For `security_groups` rules with `source.type`/`destination.type = security-group`, `value` can be either a logical security group name or a literal `sg-...` ID.
 - Security group rule identity and route-table associations use order-insensitive keys, so list reordering alone does not trigger resource address drift.
+- `iam_roles.policies` and `iam_users.policies` accept either policy ARNs or logical names from `iam_policies`.
+- IAM OIDC providers: `iam_oidc_providers` provisions IAM OpenID Connect providers, and `iam_roles.assume_role_policy` supports `templatestring()` interpolation with `${oidc_provider["<name-or-url>"].arn}` (alias `${iam_oidc_provider["<name-or-url>"].arn}`).
+- `iam_policies.document_json` supports interpolation for `${oidc_provider[...]}` / `${iam_oidc_provider[...]}` and `${cloudfront_distribution["<name>"].arn}`. CloudFront ARN interpolation first resolves from managed `cloudfront_distributions` created in the same apply, then falls back to `distribution_arn` or `distribution_id` from the spec when needed. If you need a literal `${...}` string, escape it as `$${...}`.
+- CodeDeploy: `codedeploy_applications` and `codedeploy_deployment_groups` are supported. Deployment groups can resolve `service_role_name` from `iam_roles`, `autoscaling_groups` from logical ASG names, and `load_balancer_info.target_groups` from logical ALB target group names.
+- RDS enhanced monitoring: use `rds_instances.monitoring_role_arn` for a literal ARN, or `rds_instances.monitoring_role_name` for a role name resolved from `iam_roles`/existing IAM roles.
+- EC2 IAM profiles: for IAM roles with EC2 trust (`ec2.amazonaws.com`), the module auto-creates a same-name IAM instance profile so `ec2_instances.iam_role` can reference the role name directly.
 
 #### Feature Notes
 
-- EKS Pod Identity: `role_arn` accepts either a literal ARN or a role name from `iam_roles`/`eks_irsa_roles`; the role trust principal must be `pods.eks.amazonaws.com` with `sts:AssumeRole` and `sts:TagSession`.
-- Inline IAM policies: `iam_roles.inline_policies` and `eks_irsa_roles.inline_policies` accept either `document_json` or `document_url` (for example `https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/refs/heads/main/docs/install/iam_policy.json`).
+- EKS Pod Identity: prefer `role_name` (logical role name) or `role_arn` (literal ARN). The role trust principal must be `pods.eks.amazonaws.com` with `sts:AssumeRole` and `sts:TagSession`.
+- IAM identities: `iam_roles`, `iam_users`, and customer-managed `iam_policies` are supported in the spec-first flow.
+- Inline IAM policies: `iam_roles.inline_policies`, `iam_users.inline_policies`, and `eks_irsa_roles.inline_policies` accept either `document_json` or `document_url` (for example `https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/refs/heads/main/docs/install/iam_policy.json`).
 - Launch templates AMI: `image_id` accepts either `ami-*` or an AMI name; AMI-name lookup can be tuned with `image_owners` (default `["self"]`) and `image_most_recent` (default `true`).
 - Launch templates user data: priority is `user_data_base64` > `user_data_file` > inline `user_data`; `user_data_file` supports repo-relative or absolute paths.
 - Launch templates interpolation: `vpc_security_groups`/`security_groups` support `templatestring()` with `${security_group["<name>"]}` and `${cluster["<eks-cluster-name>"].security_group_id}` (alias `${eks_cluster["<eks-cluster-name>"].security_group_id}`).
 - EC2 Auto Scaling Groups: `ec2_auto_scaling_groups` can reference managed `ec2_launch_templates` by logical name and ALB target groups by logical name, while still accepting literal existing launch template names/IDs and target group ARNs.
+- RDS parameter groups: `rds_parameter_groups` manages `aws_db_parameter_group`, and `rds_instances.parameter_group_name` resolves to managed groups by logical name.
+- ALB listeners: `ec2_load_balancers.listeners` supports `default_action.type = fixed-response` with `fixed_response.content_type`, `fixed_response.status_code`, and optional `fixed_response.message_body`. HTTPS listeners support either explicit `certificate_arn` or `acm_certificate_name` (`acm_certificate_domain_name` alias) resolved from `acm_certificates[].domain_name`. If `default_action` is omitted, the listener defaults to forward action using the first item in `target_groups`.
+- KMS keys import-by-reference: `kms_keys` supports `existing_key_id` to reference an existing customer-managed KMS key without creating a new key resource. Use `create_alias: false` when the alias already exists and should not be managed by Terraform.
 - EC2 Auto Scaling instance refresh: `instance_refresh` supports rolling replacements with `triggers` and `preferences` such as `min_healthy_percentage` and `instance_warmup`.
 - EKS add-ons interpolation: `eks_addons.configuration_values` supports the same cluster security-group interpolation, plus `${subnet["<name>"]}` and `${security_group["<name>"]}` maps.
 - EKS add-on rollout phase: `eks_addons.provision_phase` supports `before_nodegroup`, `after_nodegroup`, and `auto` (default). `before_nodegroup` add-ons are applied before node groups, and `after_nodegroup` add-ons are applied after node groups.
@@ -138,6 +148,7 @@ Use this checklist while editing:
 - EKS Helm image pull policy: `image_pull_policy` is a shorthand for Helm `set` key `image.pullPolicy` (ignored when `set` already includes `image.pullPolicy`).
 - Kubernetes Services: `k8s_services` manages `Service` resources used by in-cluster traffic and TargetGroupBinding backends.
 - Kubernetes TargetGroupBinding: `k8s_target_group_bindings` must set either `target_group_arn` or `target_group_name`; module applies `elbv2.k8s.aws/v1beta1` `TargetGroupBinding` via `kubectl` (`aws eks update-kubeconfig` + `kubectl apply/delete`) and expects AWS Load Balancer Controller CRDs and a backend Kubernetes Service with matching endpoints.
+- CloudFront Functions and distributions: `cloudfront_functions` provisions `aws_cloudfront_function` resources (`code` or `code_file`, runtime, publish), and `cloudfront_distributions` can associate functions via `function_name` (logical name) or `function_arn`. CloudFront references support explicit pairs like `web_acl_name`/`web_acl_arn`, `origin_access_control_name`/`origin_access_control_id`, and `target_origin_name`/`target_origin_id`. Cache behavior policies support both `*_policy_id` and `*_policy_name` (`cache_policy_name`, `origin_request_policy_name`, `response_headers_policy_name`), with `*_policy_name` recommended. Managed policy names are accepted with or without the `Managed-` prefix. `viewer_certificate` also supports `acm_certificate_name` (or `acm_certificate_domain_name`) to resolve ARN from `acm_certificates[].domain_name`. For CloudFront custom domains, the referenced certificate must still be in `us-east-1`.
 
 ### 4. Initialize and Validate
 
@@ -271,6 +282,9 @@ Primary responsibilities:
 Owns network and IAM oriented resources:
 
 - IAM Roles
+- IAM Instance Profiles (for EC2-trusted roles)
+- IAM Users
+- IAM Policies
 - Network ACLs
 - VPC Endpoints
 - VPC Flow Logs

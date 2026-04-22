@@ -51,6 +51,12 @@ properties:
           properties:
             iam_roles:
               $ref: "#/$defs/generic_resource_array"
+            iam_policies:
+              $ref: "#/$defs/generic_resource_array"
+            iam_users:
+              $ref: "#/$defs/generic_resource_array"
+            iam_oidc_providers:
+              $ref: "#/$defs/generic_resource_array"
             vpcs:
               $ref: "#/$defs/generic_resource_array"
             subnets:
@@ -71,6 +77,8 @@ properties:
               $ref: "#/$defs/generic_resource_array"
             rds_subnet_groups:
               $ref: "#/$defs/generic_resource_array"
+            rds_parameter_groups:
+              $ref: "#/$defs/generic_resource_array"
             rds_instances:
               $ref: "#/$defs/generic_resource_array"
             ec2_instances:
@@ -78,6 +86,10 @@ properties:
             ec2_launch_templates:
               $ref: "#/$defs/generic_resource_array"
             ec2_auto_scaling_groups:
+              $ref: "#/$defs/generic_resource_array"
+            codedeploy_applications:
+              $ref: "#/$defs/generic_resource_array"
+            codedeploy_deployment_groups:
               $ref: "#/$defs/generic_resource_array"
             ec2_load_balancers:
               $ref: "#/$defs/generic_resource_array"
@@ -118,6 +130,8 @@ properties:
             waf_web_acls:
               $ref: "#/$defs/generic_resource_array"
             cloudfront_origin_access_controls:
+              $ref: "#/$defs/generic_resource_array"
+            cloudfront_functions:
               $ref: "#/$defs/generic_resource_array"
             cloudfront_distributions:
               $ref: "#/$defs/generic_resource_array"
@@ -189,7 +203,9 @@ $defs:
     required:
       - name
       - kubernetes_version
-      - subnet_ids
+    anyOf:
+      - required: [subnet_ids]
+      - required: [subnet_names]
     properties:
       name:
         type: string
@@ -205,6 +221,20 @@ $defs:
         items:
           type: string
           minLength: 1
+      subnet_names:
+        type: array
+        minItems: 1
+        items:
+          type: string
+          minLength: 1
+      security_group_ids:
+        type: array
+        items:
+          type: string
+      security_group_names:
+        type: array
+        items:
+          type: string
       security_groups:
         type: array
         items:
@@ -249,8 +279,10 @@ $defs:
     required:
       - name
       - cluster
-      - subnet_ids
       - scaling
+    anyOf:
+      - required: [subnet_ids]
+      - required: [subnet_names]
     properties:
       name:
         type: string
@@ -259,6 +291,12 @@ $defs:
         type: string
         minLength: 1
       subnet_ids:
+        type: array
+        minItems: 1
+        items:
+          type: string
+          minLength: 1
+      subnet_names:
         type: array
         minItems: 1
         items:
@@ -343,6 +381,14 @@ $defs:
           ec2_ssh_key:
             type: string
           source_security_groups:
+            type: array
+            items:
+              type: string
+          source_security_group_ids:
+            type: array
+            items:
+              type: string
+          source_security_group_names:
             type: array
             items:
               type: string

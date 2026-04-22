@@ -107,14 +107,23 @@ locals {
     for candidate in concat(
       [for vpc in try(local.resources_by_type.vpcs, []) : try(vpc.name, null)],
       [for subnet in try(local.resources_by_type.subnets, []) : try(subnet.vpc, null)],
+      [for subnet in try(local.resources_by_type.subnets, []) : try(subnet.vpc_name, null)],
       [for internet_gateway in try(local.resources_by_type.internet_gateways, []) : try(internet_gateway.vpc, null)],
+      [for internet_gateway in try(local.resources_by_type.internet_gateways, []) : try(internet_gateway.vpc_name, null)],
       [for route_table in try(local.resources_by_type.route_tables, []) : try(route_table.vpc, null)],
+      [for route_table in try(local.resources_by_type.route_tables, []) : try(route_table.vpc_name, null)],
       [for security_group in try(local.resources_by_type.security_groups, []) : try(security_group.vpc, null)],
+      [for security_group in try(local.resources_by_type.security_groups, []) : try(security_group.vpc_name, null)],
       [for endpoint in try(local.resources_by_type.vpc_endpoints, []) : try(endpoint.vpc, null)],
+      [for endpoint in try(local.resources_by_type.vpc_endpoints, []) : try(endpoint.vpc_name, null)],
       [for network_acl in try(local.resources_by_type.network_acls, []) : try(network_acl.vpc, null)],
+      [for network_acl in try(local.resources_by_type.network_acls, []) : try(network_acl.vpc_name, null)],
       [for flow_log in try(local.resources_by_type.vpc_flow_logs, []) : try(flow_log.vpc, null)],
+      [for flow_log in try(local.resources_by_type.vpc_flow_logs, []) : try(flow_log.vpc_name, null)],
       [for alb in try(local.resources_by_type.albs, []) : try(alb.vpc, null)],
+      [for alb in try(local.resources_by_type.albs, []) : try(alb.vpc_name, null)],
       [for cluster in try(local.resources_by_type.eks_clusters, []) : try(cluster.vpc, null)],
+      [for cluster in try(local.resources_by_type.eks_clusters, []) : try(cluster.vpc_name, null)],
       tolist(local.addon_vpc_reference_names)
     ) :
     trimspace(tostring(candidate))
@@ -125,17 +134,29 @@ locals {
     for candidate in concat(
       [for subnet in try(local.resources_by_type.subnets, []) : try(subnet.name, null)],
       [for nat_gateway in try(local.resources_by_type.nat_gateways, []) : try(nat_gateway.subnet, null)],
+      [for nat_gateway in try(local.resources_by_type.nat_gateways, []) : try(nat_gateway.subnet_name, null)],
+      [for nat_gateway in try(local.resources_by_type.nat_gateways, []) : try(nat_gateway.subnet_id, null)],
       flatten([for route_table in try(local.resources_by_type.route_tables, []) : try(route_table.associated_subnets, [])]),
+      flatten([for route_table in try(local.resources_by_type.route_tables, []) : try(route_table.associated_subnet_names, [])]),
+      flatten([for route_table in try(local.resources_by_type.route_tables, []) : try(route_table.associated_subnet_ids, [])]),
       flatten([for endpoint in try(local.resources_by_type.vpc_endpoints, []) : try(endpoint.subnets, [])]),
+      flatten([for endpoint in try(local.resources_by_type.vpc_endpoints, []) : try(endpoint.subnet_names, [])]),
+      flatten([for endpoint in try(local.resources_by_type.vpc_endpoints, []) : try(endpoint.subnet_ids, [])]),
       flatten([for network_acl in try(local.resources_by_type.network_acls, []) : try(network_acl.associated_subnets, [])]),
       [for ec2 in try(local.resources_by_type.ec2_instances, []) : try(ec2.subnet, null)],
       flatten([for autoscaling_group in try(local.resources_by_type.ec2_auto_scaling_groups, []) : try(autoscaling_group.subnets, [])]),
       flatten([for rds in try(local.resources_by_type.rds_instances, []) : try(rds.subnets, [])]),
       flatten([for cluster in try(local.resources_by_type.eks_clusters, []) : try(cluster.subnet_ids, [])]),
+      flatten([for cluster in try(local.resources_by_type.eks_clusters, []) : try(cluster.subnet_names, [])]),
       flatten([for node_group in try(local.resources_by_type.eks_node_groups, []) : try(node_group.subnet_ids, [])]),
+      flatten([for node_group in try(local.resources_by_type.eks_node_groups, []) : try(node_group.subnet_names, [])]),
       flatten([for fargate_profile in try(local.resources_by_type.eks_fargate_profiles, []) : try(fargate_profile.subnet_ids, [])]),
+      flatten([for fargate_profile in try(local.resources_by_type.eks_fargate_profiles, []) : try(fargate_profile.subnet_names, [])]),
       flatten([for lambda_function in try(local.resources_by_type.lambda_functions, []) : try(lambda_function.vpc_config.subnet_ids, [])]),
+      flatten([for lambda_function in try(local.resources_by_type.lambda_functions, []) : try(lambda_function.vpc_config.subnet_names, [])]),
       flatten([for ecs_service in try(local.resources_by_type.ecs_services, []) : try(ecs_service.network_configuration.subnets, [])]),
+      flatten([for ecs_service in try(local.resources_by_type.ecs_services, []) : try(ecs_service.network_configuration.subnet_names, [])]),
+      flatten([for ecs_service in try(local.resources_by_type.ecs_services, []) : try(ecs_service.network_configuration.subnet_ids, [])]),
       tolist(local.addon_subnet_reference_names)
     ) :
     trimspace(tostring(candidate))
@@ -146,12 +167,21 @@ locals {
     for candidate in concat(
       [for security_group in try(local.resources_by_type.security_groups, []) : try(security_group.name, null)],
       flatten([for cluster in try(local.resources_by_type.eks_clusters, []) : try(cluster.security_groups, [])]),
+      flatten([for cluster in try(local.resources_by_type.eks_clusters, []) : try(cluster.security_group_names, [])]),
+      flatten([for cluster in try(local.resources_by_type.eks_clusters, []) : try(cluster.security_group_ids, [])]),
       flatten([for node_group in try(local.resources_by_type.eks_node_groups, []) : try(node_group.remote_access.source_security_groups, [])]),
+      flatten([for node_group in try(local.resources_by_type.eks_node_groups, []) : try(node_group.remote_access.source_security_group_names, [])]),
+      flatten([for node_group in try(local.resources_by_type.eks_node_groups, []) : try(node_group.remote_access.source_security_group_ids, [])]),
       flatten([for endpoint in try(local.resources_by_type.vpc_endpoints, []) : try(endpoint.security_groups, [])]),
+      flatten([for endpoint in try(local.resources_by_type.vpc_endpoints, []) : try(endpoint.security_group_names, [])]),
+      flatten([for endpoint in try(local.resources_by_type.vpc_endpoints, []) : try(endpoint.security_group_ids, [])]),
       flatten([for ec2 in try(local.resources_by_type.ec2_instances, []) : try(ec2.security_groups, [])]),
       flatten([for alb in try(local.resources_by_type.albs, []) : try(alb.security_groups, [])]),
       flatten([for lambda_function in try(local.resources_by_type.lambda_functions, []) : try(lambda_function.vpc_config.security_group_ids, [])]),
+      flatten([for lambda_function in try(local.resources_by_type.lambda_functions, []) : try(lambda_function.vpc_config.security_group_names, [])]),
       flatten([for ecs_service in try(local.resources_by_type.ecs_services, []) : try(ecs_service.network_configuration.security_groups, [])]),
+      flatten([for ecs_service in try(local.resources_by_type.ecs_services, []) : try(ecs_service.network_configuration.security_group_names, [])]),
+      flatten([for ecs_service in try(local.resources_by_type.ecs_services, []) : try(ecs_service.network_configuration.security_group_ids, [])]),
       flatten([for launch_template in try(local.resources_by_type.ec2_launch_templates, []) : try(launch_template.vpc_security_groups, try(launch_template.security_groups, []))]),
       tolist(local.addon_security_group_reference_names)
     ) :
@@ -163,6 +193,8 @@ locals {
     for candidate in concat(
       [for route_table in try(local.resources_by_type.route_tables, []) : try(route_table.name, null)],
       flatten([for endpoint in try(local.resources_by_type.vpc_endpoints, []) : try(endpoint.route_tables, [])]),
+      flatten([for endpoint in try(local.resources_by_type.vpc_endpoints, []) : try(endpoint.route_table_names, [])]),
+      flatten([for endpoint in try(local.resources_by_type.vpc_endpoints, []) : try(endpoint.route_table_ids, [])]),
       tolist(local.addon_route_table_reference_names)
     ) :
     trimspace(tostring(candidate))
@@ -209,7 +241,9 @@ locals {
   iam_role_lookup_names = toset([
     for candidate in concat(
       [for cluster in try(local.resources_by_type.eks_clusters, []) : try(cluster.iam.cluster_role_name, null)],
-      [for node_group in try(local.resources_by_type.eks_node_groups, []) : try(node_group.iam_role_name, null)]
+      [for node_group in try(local.resources_by_type.eks_node_groups, []) : try(node_group.iam_role_name, null)],
+      [for deployment_group in try(local.resources_by_type.codedeploy_deployment_groups, []) : try(deployment_group.service_role_name, null)],
+      [for rds_instance in try(local.resources_by_type.rds_instances, []) : try(rds_instance.monitoring_role_name, null)]
     ) :
     trimspace(tostring(candidate))
     if try(trimspace(tostring(candidate)) != "", false)
@@ -429,11 +463,18 @@ locals {
     for cluster in try(local.resources_by_type.eks_clusters, []) :
     cluster.name => merge(cluster, {
       subnet_ids = [
-        for subnet in cluster.subnet_ids :
+        for subnet in distinct(compact(concat(
+          try(cluster.subnet_ids, []),
+          try(cluster.subnet_names, [])
+        ))) :
         lookup(local.subnet_ids_by_name, subnet, subnet)
       ]
       security_groups = [
-        for security_group in try(cluster.security_groups, []) :
+        for security_group in distinct(compact(concat(
+          try(cluster.security_group_ids, []),
+          try(cluster.security_group_names, []),
+          try(cluster.security_groups, [])
+        ))) :
         lookup(local.security_group_ids_by_name, security_group, security_group)
       ]
       iam = merge(
@@ -457,7 +498,10 @@ locals {
     for node_group in try(local.resources_by_type.eks_node_groups, []) :
     node_group.name => merge(node_group, {
       subnet_ids = [
-        for subnet in node_group.subnet_ids :
+        for subnet in distinct(compact(concat(
+          try(node_group.subnet_ids, []),
+          try(node_group.subnet_names, [])
+        ))) :
         lookup(local.subnet_ids_by_name, subnet, subnet)
       ]
       iam_role_arn = (
@@ -484,7 +528,11 @@ locals {
         node_group.remote_access,
         {
           source_security_groups = [
-            for security_group in try(node_group.remote_access.source_security_groups, []) :
+            for security_group in distinct(compact(concat(
+              try(node_group.remote_access.source_security_group_ids, []),
+              try(node_group.remote_access.source_security_group_names, []),
+              try(node_group.remote_access.source_security_groups, [])
+            ))) :
             lookup(local.security_group_ids_by_name, security_group, security_group)
           ]
         }
@@ -667,8 +715,12 @@ module "subnets" {
   source   = "./modules/subnet"
   for_each = local.subnets
 
-  name                            = each.value.name
-  vpc_id                          = lookup(local.vpc_ids_by_name, each.value.vpc, each.value.vpc)
+  name = each.value.name
+  vpc_id = lookup(
+    local.vpc_ids_by_name,
+    coalesce(try(each.value.vpc_id, null), try(each.value.vpc_name, null), try(each.value.vpc, null)),
+    coalesce(try(each.value.vpc_id, null), try(each.value.vpc_name, null), try(each.value.vpc, null))
+  )
   cidr_block                      = each.value.cidr
   availability_zone               = try(each.value.availability_zone, null)
   map_public_ip_on_launch         = try(each.value.map_public_ip_on_launch, false)
@@ -682,9 +734,13 @@ module "internet_gateways" {
   source   = "./modules/internet-gateway"
   for_each = local.internet_gateways
 
-  name   = each.value.name
-  vpc_id = lookup(local.vpc_ids_by_name, each.value.vpc, each.value.vpc)
-  tags   = try(each.value.tags, {})
+  name = each.value.name
+  vpc_id = lookup(
+    local.vpc_ids_by_name,
+    coalesce(try(each.value.vpc_id, null), try(each.value.vpc_name, null), try(each.value.vpc, null)),
+    coalesce(try(each.value.vpc_id, null), try(each.value.vpc_name, null), try(each.value.vpc, null))
+  )
+  tags = try(each.value.tags, {})
 
   depends_on = [module.vpcs]
 }
@@ -693,8 +749,12 @@ module "nat_gateways" {
   source   = "./modules/nat-gateway"
   for_each = local.nat_gateways
 
-  name            = each.value.name
-  subnet_id       = lookup(local.subnet_ids_by_name, each.value.subnet, each.value.subnet)
+  name = each.value.name
+  subnet_id = lookup(
+    local.subnet_ids_by_name,
+    coalesce(try(each.value.subnet_id, null), try(each.value.subnet_name, null), try(each.value.subnet, null)),
+    coalesce(try(each.value.subnet_id, null), try(each.value.subnet_name, null), try(each.value.subnet, null))
+  )
   connection_type = try(each.value.connection_type, "public")
   allocation_id   = try(each.value.allocation_id, null)
   tags            = try(each.value.tags, {})
@@ -706,11 +766,19 @@ module "route_tables" {
   source   = "./modules/route-table"
   for_each = local.route_tables
 
-  name   = each.value.name
-  vpc_id = lookup(local.vpc_ids_by_name, each.value.vpc, each.value.vpc)
+  name = each.value.name
+  vpc_id = lookup(
+    local.vpc_ids_by_name,
+    coalesce(try(each.value.vpc_id, null), try(each.value.vpc_name, null), try(each.value.vpc, null)),
+    coalesce(try(each.value.vpc_id, null), try(each.value.vpc_name, null), try(each.value.vpc, null))
+  )
 
   associated_subnet_ids = {
-    for subnet in try(each.value.associated_subnets, []) :
+    for subnet in distinct(compact(concat(
+      try(each.value.associated_subnet_ids, []),
+      try(each.value.associated_subnet_names, []),
+      try(each.value.associated_subnets, [])
+    ))) :
     subnet => lookup(local.subnet_ids_by_name, subnet, subnet)
   }
 
@@ -721,10 +789,18 @@ module "route_tables" {
       target_type       = try(route.target.type, null)
       target_id = (
         try(route.target.type, "") == "internet-gateway" ?
-        lookup(local.internet_gateway_ids_by_name, try(route.target.value, ""), try(route.target.value, null)) :
+        lookup(
+          local.internet_gateway_ids_by_name,
+          coalesce(try(route.target.id, null), try(route.target.name, null), try(route.target.value, null)),
+          coalesce(try(route.target.id, null), try(route.target.name, null), try(route.target.value, null))
+        ) :
         try(route.target.type, "") == "nat-gateway" ?
-        lookup(local.nat_gateway_ids_by_name, try(route.target.value, ""), try(route.target.value, null)) :
-        try(route.target.value, null)
+        lookup(
+          local.nat_gateway_ids_by_name,
+          coalesce(try(route.target.id, null), try(route.target.name, null), try(route.target.value, null)),
+          coalesce(try(route.target.id, null), try(route.target.name, null), try(route.target.value, null))
+        ) :
+        coalesce(try(route.target.id, null), try(route.target.name, null), try(route.target.value, null))
       )
     }
   ]
@@ -738,8 +814,12 @@ module "security_groups" {
   source   = "./modules/security-group"
   for_each = local.security_groups
 
-  name                   = each.value.name
-  vpc_id                 = lookup(local.vpc_ids_by_name, each.value.vpc, each.value.vpc)
+  name = each.value.name
+  vpc_id = lookup(
+    local.vpc_ids_by_name,
+    coalesce(try(each.value.vpc_id, null), try(each.value.vpc_name, null), try(each.value.vpc, null)),
+    coalesce(try(each.value.vpc_id, null), try(each.value.vpc_name, null), try(each.value.vpc, null))
+  )
   revoke_rules_on_delete = try(each.value.revoke_rules_on_delete, false)
 
   tags = try(each.value.tags, {})

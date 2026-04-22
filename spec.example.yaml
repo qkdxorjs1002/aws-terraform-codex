@@ -25,6 +25,33 @@ project:
           assume_role_policy: '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"pods.eks.amazonaws.com"},"Action":["sts:AssumeRole","sts:TagSession"]}]}'
           policies:
             - "arn:aws:iam::aws:policy/AmazonRoute53ReadOnlyAccess"
+            - "my-tst-tf-secrets-read-policy"
+        - name: "my-tst-tf-github-deploy-role"
+          description: "IAM role for GitHub Actions CodeDeploy"
+          assume_role_policy: '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Federated":"${oidc_provider[\"github-actions\"].arn}"},"Action":"sts:AssumeRoleWithWebIdentity","Condition":{"StringEquals":{"token.actions.githubusercontent.com:aud":"sts.amazonaws.com"},"StringLike":{"token.actions.githubusercontent.com:sub":"repo:my-org/my-repo:ref:refs/heads/main"}}}]}'
+          policies:
+            - "arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole"
+    - iam_policies:
+        - name: "my-tst-tf-secrets-read-policy"
+          description: "Customer managed policy for Secrets Manager read access"
+          document_json: '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["secretsmanager:GetSecretValue","secretsmanager:DescribeSecret"],"Resource":"*"}]}'
+    - iam_users:
+        - name: "my-tst-tf-platform-automation-user"
+          path: "/automation/"
+          force_destroy: false
+          policies:
+            - "arn:aws:iam::aws:policy/ReadOnlyAccess"
+            - "my-tst-tf-secrets-read-policy"
+          inline_policies:
+            - name: "allow-self-service-credentials"
+              document_json: '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["iam:CreateAccessKey","iam:DeleteAccessKey","iam:ListAccessKeys","iam:UpdateAccessKey"],"Resource":"arn:aws:iam::*:user/my-tst-tf-platform-automation-user"}]}'
+    - iam_oidc_providers:
+        - name: "github-actions"
+          url: "https://token.actions.githubusercontent.com"
+          client_id_list:
+            - "sts.amazonaws.com"
+          thumbprint_list:
+            - "6938fd4d98bab03faadb97b34396831e3780aea1"
     - ec2_launch_templates:
         - name: "my-tst-tf-eks-ap1-lt"
           version: "1"
@@ -256,6 +283,14 @@ project:
               port: 80
               target_groups:
                 - "my-tst-tf-web-tg"
+            - protocol: "HTTP"
+              port: 81
+              default_action:
+                type: "fixed-response"
+                fixed_response:
+                  content_type: "text/plain"
+                  status_code: "503"
+                  message_body: "Service unavailable"
     - ec2_alb_target_groups:
         - name: "my-tst-tf-web-tg"
           type: "instance"
@@ -297,6 +332,23 @@ project:
             preferences:
               min_healthy_percentage: 50
               instance_warmup: 300
+    - codedeploy_applications:
+        - name: "my-tst-tf-web-deploy"
+          compute_platform: "Server"
+    - codedeploy_deployment_groups:
+        - name: "my-tst-tf-web-deploy-group"
+          application: "my-tst-tf-web-deploy"
+          service_role_name: "my-tst-tf-github-deploy-role"
+          deployment_config_name: "CodeDeployDefault.OneAtATime"
+          autoscaling_groups:
+            - "my-tst-tf-web-asg"
+          deployment_style:
+            deployment_type: "IN_PLACE"
+            deployment_option: "WITHOUT_TRAFFIC_CONTROL"
+          auto_rollback_configuration:
+            enabled: true
+            events:
+              - "DEPLOYMENT_FAILURE"
     - vpc_endpoints:
         - name: "my-tst-tf-vpce-ec2-ap1"
           vpc: "my-tst-tf-vpc-ap1"
@@ -362,6 +414,19 @@ project:
             - "my-tst-tf-rtb-pri-ap1a"
             - "my-tst-tf-rtb-pod-ap1a"
             - "my-tst-tf-rtb-pod-ap1c"
+    - kms_keys:
+        - alias: "alias/my-tst-tf-cmk-app"
+          description: "Customer managed key for app encryption"
+          enabled: true
+          enable_key_rotation: true
+          deletion_window_in_days: 30
+          key_usage: "ENCRYPT_DECRYPT"
+          key_spec: "SYMMETRIC_DEFAULT"
+          multi_region: false
+        - alias: "alias/my-tst-tf-existing-cmk"
+          description: "Existing key imported by reference only"
+          existing_key_id: "12345678-1234-1234-1234-123456789012"
+          create_alias: false
     - eks_clusters:
         - name: "my-tst-tf-eks-ap1"
           vpc: "my-tst-tf-vpc-ap1"
@@ -371,10 +436,10 @@ project:
             public: true
             public_access_cidrs:
               - "0.0.0.0/0"
-          subnet_ids:
+          subnet_names:
             - "my-tst-tf-sbn-pri-ap1a"
             - "my-tst-tf-sbn-pri-ap1c"
-          security_groups:
+          security_group_names:
             - "my-tst-tf-eks-cls-sg-ap1"
           cluster_logging:
             enabled_types:
@@ -389,7 +454,7 @@ project:
     - eks_node_groups:
         - name: "my-tst-tf-eks-ng-ap1_1"
           cluster: "my-tst-tf-eks-ap1"
-          subnet_ids:
+          subnet_names:
             - "my-tst-tf-sbn-pri-ap1a"
             - "my-tst-tf-sbn-pri-ap1c"
           iam_role_name: "my-tst-tf-eks-nd-iam-role"
@@ -626,4 +691,4 @@ project:
         - cluster: "my-tst-tf-eks-ap1"
           namespace: "kube-system"
           service_account_name: "external-dns"
-          role_arn: "my-tst-tf-external-dns-pod-identity-role"
+          role_name: "my-tst-tf-external-dns-pod-identity-role"

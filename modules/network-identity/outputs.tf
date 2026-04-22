@@ -4,3 +4,31 @@ output "iam_role_arns_by_name" {
     name => role.arn
   }
 }
+
+output "iam_user_arns_by_name" {
+  value = {
+    for name, user in aws_iam_user.managed :
+    name => user.arn
+  }
+}
+
+output "iam_policy_arns_by_name" {
+  value = {
+    for name, policy in aws_iam_policy.managed :
+    name => policy.arn
+  }
+}
+
+output "iam_oidc_provider_arns_by_key" {
+  value = {
+    for key, provider in aws_iam_openid_connect_provider.managed :
+    key => provider.arn
+  }
+}
+
+output "iam_oidc_provider_arns_by_url" {
+  value = {
+    for _, provider in aws_iam_openid_connect_provider.managed :
+    provider.url => provider.arn
+  }
+}

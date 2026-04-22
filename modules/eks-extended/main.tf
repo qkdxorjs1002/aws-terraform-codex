@@ -276,7 +276,7 @@ locals {
 
   aws_cli_profile_args           = try(trimspace(var.profile), "") != "" ? ["--profile", trimspace(var.profile)] : []
   aws_cli_profile_arg_string     = try(trimspace(var.profile), "") != "" ? " --profile '${trimspace(var.profile)}'" : ""
-  k8s_exec_cluster_name_or_empty = coalesce(local.k8s_target_cluster_name, "")
+  k8s_exec_cluster_name_or_empty = local.k8s_target_cluster_name == null ? "" : local.k8s_target_cluster_name
 }
 
 data "aws_eks_cluster" "eks_irsa_cluster" {
@@ -456,7 +456,10 @@ resource "aws_eks_fargate_profile" "managed" {
   )
 
   subnet_ids = [
-    for subnet in try(each.value.subnet_ids, []) :
+    for subnet in distinct(compact(concat(
+      try(each.value.subnet_ids, []),
+      try(each.value.subnet_names, [])
+    ))) :
     lookup(var.subnet_ids_by_name, subnet, subnet)
   ]
 
@@ -517,7 +520,14 @@ resource "aws_eks_pod_identity_association" "managed" {
   cluster_name    = each.value.cluster
   namespace       = each.value.namespace
   service_account = each.value.service_account_name
-  role_arn        = lookup(local.pod_identity_role_arns_by_name, each.value.role_arn, each.value.role_arn)
+  role_arn = coalesce(
+    try(each.value.role_arn, null),
+    lookup(
+      local.pod_identity_role_arns_by_name,
+      try(each.value.role_name, ""),
+      try(each.value.role_name, null)
+    )
+  )
 
   depends_on = [
     terraform_data.eks_runtime_prerequisites,
@@ -783,12 +793,12 @@ resource "terraform_data" "target_group_binding" {
   for_each = local.k8s_target_group_bindings
 
   input = {
-    cluster_name        = each.value.cluster
-    binding_name        = each.value.name
-    region              = var.region
-    profile_arg_string  = local.aws_cli_profile_arg_string
-    binding_json        = jsonencode(local.k8s_target_group_binding_manifests[each.key])
-    manifest_hash       = sha1(jsonencode(local.k8s_target_group_binding_manifests[each.key]))
+    cluster_name       = each.value.cluster
+    binding_name       = each.value.name
+    region             = var.region
+    profile_arg_string = local.aws_cli_profile_arg_string
+    binding_json       = jsonencode(local.k8s_target_group_binding_manifests[each.key])
+    manifest_hash      = sha1(jsonencode(local.k8s_target_group_binding_manifests[each.key]))
   }
 
   triggers_replace = [

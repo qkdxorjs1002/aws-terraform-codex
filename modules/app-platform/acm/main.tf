@@ -19,7 +19,7 @@ resource "aws_acm_certificate" "managed" {
 
   tags = merge(
     {
-      Name = each.value.domain_name
+      Name = startswith(each.value.domain_name, "*.") ? "wildcard-${trimprefix(each.value.domain_name, "*.")}" : each.value.domain_name
     },
     try(each.value.tags, {})
   )

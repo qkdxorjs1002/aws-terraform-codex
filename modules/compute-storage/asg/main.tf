@@ -7,7 +7,11 @@ locals {
   autoscaling_group_subnet_ids = {
     for asg_name, autoscaling_group in local.ec2_auto_scaling_groups :
     asg_name => [
-      for subnet in try(autoscaling_group.subnets, []) :
+      for subnet in distinct(compact(concat(
+        try(autoscaling_group.subnet_ids, []),
+        try(autoscaling_group.subnet_names, []),
+        try(autoscaling_group.subnets, [])
+      ))) :
       lookup(var.subnet_ids_by_name, subnet, subnet)
     ]
   }
@@ -15,7 +19,11 @@ locals {
   autoscaling_group_target_group_arns = {
     for asg_name, autoscaling_group in local.ec2_auto_scaling_groups :
     asg_name => [
-      for target_group in try(autoscaling_group.target_groups, []) :
+      for target_group in distinct(compact(concat(
+        try(autoscaling_group.target_group_arns, []),
+        try(autoscaling_group.target_group_names, []),
+        try(autoscaling_group.target_groups, [])
+      ))) :
       lookup(var.alb_target_group_arns_by_key, target_group, target_group)
     ]
   }

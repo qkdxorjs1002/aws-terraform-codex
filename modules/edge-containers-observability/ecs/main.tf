@@ -183,12 +183,20 @@ resource "aws_ecs_service" "managed" {
 
     content {
       subnets = [
-        for subnet in try(network_configuration.value.subnets, []) :
+        for subnet in distinct(compact(concat(
+          try(network_configuration.value.subnet_ids, []),
+          try(network_configuration.value.subnet_names, []),
+          try(network_configuration.value.subnets, [])
+        ))) :
         lookup(var.subnet_ids_by_name, subnet, subnet)
       ]
 
       security_groups = [
-        for security_group in try(network_configuration.value.security_groups, []) :
+        for security_group in distinct(compact(concat(
+          try(network_configuration.value.security_group_ids, []),
+          try(network_configuration.value.security_group_names, []),
+          try(network_configuration.value.security_groups, [])
+        ))) :
         lookup(var.security_group_ids_by_name, security_group, security_group)
       ]
 

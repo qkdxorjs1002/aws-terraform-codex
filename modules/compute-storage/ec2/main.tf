@@ -16,10 +16,18 @@ resource "aws_instance" "managed" {
 
   ami           = each.value.ami
   instance_type = each.value.instance_type
-  subnet_id     = lookup(var.subnet_ids_by_name, each.value.subnet, each.value.subnet)
+  subnet_id = lookup(
+    var.subnet_ids_by_name,
+    coalesce(try(each.value.subnet_id, null), try(each.value.subnet_name, null), try(each.value.subnet, null)),
+    coalesce(try(each.value.subnet_id, null), try(each.value.subnet_name, null), try(each.value.subnet, null))
+  )
 
   vpc_security_group_ids = [
-    for security_group in try(each.value.security_groups, []) :
+    for security_group in distinct(compact(concat(
+      try(each.value.security_group_ids, []),
+      try(each.value.security_group_names, []),
+      try(each.value.security_groups, [])
+    ))) :
     lookup(var.security_group_ids_by_name, security_group, security_group)
   ]
 

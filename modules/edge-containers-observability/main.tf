@@ -7,8 +7,11 @@ module "waf" {
 module "cloudfront" {
   source = "./cloudfront"
 
-  resources_by_type        = var.resources_by_type
-  waf_web_acl_arns_by_name = module.waf.waf_web_acl_arns_by_name
+  resources_by_type                       = var.resources_by_type
+  waf_web_acl_arns_by_name                = module.waf.waf_web_acl_arns_by_name
+  alb_dns_names_by_name                   = var.alb_dns_names_by_name
+  s3_bucket_regional_domain_names_by_name = var.s3_bucket_regional_domain_names_by_name
+  acm_certificate_arns_by_domain_name     = var.acm_certificate_arns_by_domain_name
 }
 
 module "ecs" {
