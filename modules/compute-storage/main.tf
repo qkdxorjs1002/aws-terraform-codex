@@ -13,6 +13,7 @@ module "ec2" {
   resources_by_type          = var.resources_by_type
   subnet_ids_by_name         = var.subnet_ids_by_name
   security_group_ids_by_name = var.security_group_ids_by_name
+  iam_instance_profile_names_by_role_name = var.iam_instance_profile_names_by_role_name
 }
 
 module "launch_template" {

@@ -23,6 +23,11 @@ variable "iam_role_arns_by_name" {
   default = {}
 }
 
+variable "iam_instance_profile_names_by_role_name" {
+  type    = map(string)
+  default = {}
+}
+
 variable "eks_cluster_attributes_by_name" {
   type    = map(any)
   default = {}

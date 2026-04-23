@@ -5,6 +5,13 @@ output "iam_role_arns_by_name" {
   }
 }
 
+output "iam_instance_profile_names_by_role_name" {
+  value = {
+    for role_name, instance_profile in aws_iam_instance_profile.managed :
+    role_name => instance_profile.name
+  }
+}
+
 output "iam_user_arns_by_name" {
   value = {
     for name, user in aws_iam_user.managed :

@@ -24,6 +24,7 @@ module "compute_storage" {
   subnet_ids_by_name                  = local.subnet_ids_by_name
   security_group_ids_by_name          = local.security_group_ids_by_name
   iam_role_arns_by_name               = local.iam_role_arns_by_name
+  iam_instance_profile_names_by_role_name = module.network_identity.iam_instance_profile_names_by_role_name
   eks_cluster_attributes_by_name      = local.eks_cluster_attributes_by_name
   acm_certificate_arns_by_domain_name = module.app_platform.acm_certificate_arns_by_domain_name
 

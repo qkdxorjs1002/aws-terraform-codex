@@ -4,6 +4,23 @@ locals {
     instance.name => instance
   }
 
+  ec2_instance_profile_names = {
+    for instance_name, instance in local.ec2_instances :
+    instance_name => coalesce(
+      try(trimspace(instance.iam_instance_profile), "") != "" ? trimspace(instance.iam_instance_profile) : null,
+      try(trimspace(instance.iam_instance_profile_name), "") != "" ? trimspace(instance.iam_instance_profile_name) : null,
+      (
+        try(trimspace(instance.iam_role), "") != "" ?
+        lookup(
+          var.iam_instance_profile_names_by_role_name,
+          trimspace(instance.iam_role),
+          trimspace(instance.iam_role)
+        ) :
+        null
+      )
+    )
+  }
+
   ec2_app_volumes = {
     for instance_name, instance in local.ec2_instances :
     instance_name => instance
@@ -31,7 +48,7 @@ resource "aws_instance" "managed" {
     lookup(var.security_group_ids_by_name, security_group, security_group)
   ]
 
-  iam_instance_profile = try(each.value.iam_instance_profile, try(each.value.iam_role, null))
+  iam_instance_profile = lookup(local.ec2_instance_profile_names, each.key, null)
 
   key_name                    = try(each.value.key_name, null)
   private_ip                  = try(each.value.private_ip, null)
