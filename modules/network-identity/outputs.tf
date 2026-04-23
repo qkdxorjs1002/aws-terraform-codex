@@ -19,6 +19,13 @@ output "iam_user_arns_by_name" {
   }
 }
 
+output "iam_group_arns_by_name" {
+  value = {
+    for name, group in aws_iam_group.managed :
+    name => group.arn
+  }
+}
+
 output "iam_policy_arns_by_name" {
   value = {
     for name, policy in aws_iam_policy.managed :

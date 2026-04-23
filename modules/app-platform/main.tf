@@ -40,6 +40,11 @@ module "route53" {
 module "acm" {
   source = "./acm"
 
+  providers = {
+    aws           = aws
+    aws.us_east_1 = aws.us_east_1
+  }
+
   resources_by_type = var.resources_by_type
 }
 

@@ -21,6 +21,11 @@ locals {
     user.name => user
   }
 
+  iam_groups = {
+    for group in try(var.resources_by_type.iam_groups, []) :
+    group.name => group
+  }
+
   iam_policies = {
     for policy in try(var.resources_by_type.iam_policies, []) :
     policy.name => policy
@@ -68,7 +73,8 @@ locals {
   iam_policy_references = toset([
     for candidate in concat(
       flatten([for role in values(local.iam_roles) : try(role.policies, [])]),
-      flatten([for user in values(local.iam_users) : try(user.policies, [])])
+      flatten([for user in values(local.iam_users) : try(user.policies, [])]),
+      flatten([for group in values(local.iam_groups) : try(group.policies, [])])
     ) :
     trimspace(tostring(candidate))
     if try(trimspace(tostring(candidate)) != "", false)
@@ -93,6 +99,14 @@ locals {
       for inline_policy in flatten([
         for user in values(local.iam_users) :
         try(user.inline_policies, [])
+      ]) :
+      try(trimspace(inline_policy.document_url), "")
+      if try(trimspace(inline_policy.document_json), "") == "" && try(trimspace(inline_policy.document_url), "") != ""
+    ],
+    [
+      for inline_policy in flatten([
+        for group in values(local.iam_groups) :
+        try(group.inline_policies, [])
       ]) :
       try(trimspace(inline_policy.document_url), "")
       if try(trimspace(inline_policy.document_json), "") == "" && try(trimspace(inline_policy.document_url), "") != ""
@@ -145,6 +159,20 @@ locals {
     ]
   ])
 
+  iam_group_policy_attachments = flatten([
+    for group_name, group in local.iam_groups : [
+      for policy_reference in [
+        for policy in try(group.policies, []) :
+        trimspace(tostring(policy))
+        if try(trimspace(tostring(policy)) != "", false)
+        ] : {
+        key        = "${group_name}:${policy_reference}"
+        group_name = group_name
+        policy_arn = startswith(policy_reference, "arn:") ? policy_reference : lookup(local.iam_policy_arns_by_name, policy_reference, policy_reference)
+      }
+    ]
+  ])
+
   iam_role_inline_policies = flatten([
     for role_name, role in local.iam_roles : [
       for inline_policy in try(role.inline_policies, []) : {
@@ -174,6 +202,44 @@ locals {
       }
     ]
   ])
+
+  iam_group_inline_policies = flatten([
+    for group_name, group in local.iam_groups : [
+      for inline_policy in try(group.inline_policies, []) : {
+        key         = "${group_name}:${inline_policy.name}"
+        group_name  = group_name
+        policy_name = inline_policy.name
+        policy_json = (
+          try(trimspace(inline_policy.document_json), "") != "" ?
+          inline_policy.document_json :
+          data.http.iam_policy_document[try(trimspace(inline_policy.document_url), "")].response_body
+        )
+      }
+    ]
+  ])
+
+  iam_group_memberships = {
+    for group_name, group in local.iam_groups :
+    group_name => {
+      name = (
+        try(trimspace(group.membership_name), "") != "" ?
+        trimspace(group.membership_name) :
+        "${group_name}-membership"
+      )
+      users = sort(distinct([
+        for user in compact(concat(
+          try(group.users, []),
+          try(group.user_names, [])
+        )) :
+        trimspace(tostring(user))
+        if try(trimspace(tostring(user)) != "", false)
+      ]))
+    }
+    if length(compact(concat(
+      try(group.users, []),
+      try(group.user_names, [])
+    ))) > 0
+  }
 
   network_acl_associations = flatten([
     for acl_name, acl in local.network_acls : [
@@ -228,8 +294,8 @@ locals {
   )
 
   iam_assume_role_templatestring_context = {
-    oidc_provider           = local.iam_oidc_provider_attributes_by_lookup
-    iam_oidc_provider       = local.iam_oidc_provider_attributes_by_lookup
+    oidc_provider     = local.iam_oidc_provider_attributes_by_lookup
+    iam_oidc_provider = local.iam_oidc_provider_attributes_by_lookup
   }
 
   iam_policy_templatestring_context = {
@@ -388,6 +454,13 @@ resource "aws_iam_user" "managed" {
   )
 }
 
+resource "aws_iam_group" "managed" {
+  for_each = local.iam_groups
+
+  name = each.value.name
+  path = try(each.value.path, "/")
+}
+
 resource "aws_iam_user_policy_attachment" "managed" {
   for_each = {
     for attachment in local.iam_user_policy_attachments :
@@ -407,6 +480,35 @@ resource "aws_iam_user_policy" "managed" {
   name   = each.value.policy_name
   user   = aws_iam_user.managed[each.value.user_name].name
   policy = each.value.policy_json
+}
+
+resource "aws_iam_group_policy_attachment" "managed" {
+  for_each = {
+    for attachment in local.iam_group_policy_attachments :
+    attachment.key => attachment
+  }
+
+  group      = aws_iam_group.managed[each.value.group_name].name
+  policy_arn = each.value.policy_arn
+}
+
+resource "aws_iam_group_policy" "managed" {
+  for_each = {
+    for policy in local.iam_group_inline_policies :
+    policy.key => policy
+  }
+
+  name   = each.value.policy_name
+  group  = aws_iam_group.managed[each.value.group_name].name
+  policy = each.value.policy_json
+}
+
+resource "aws_iam_group_membership" "managed" {
+  for_each = local.iam_group_memberships
+
+  name  = each.value.name
+  users = each.value.users
+  group = aws_iam_group.managed[each.key].name
 }
 
 resource "aws_network_acl" "managed" {

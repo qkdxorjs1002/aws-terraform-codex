@@ -26,7 +26,7 @@ module "compute_storage" {
   iam_role_arns_by_name               = local.iam_role_arns_by_name
   iam_instance_profile_names_by_role_name = module.network_identity.iam_instance_profile_names_by_role_name
   eks_cluster_attributes_by_name      = local.eks_cluster_attributes_by_name
-  acm_certificate_arns_by_domain_name = module.app_platform.acm_certificate_arns_by_domain_name
+  acm_certificate_arns_by_domain_name = module.app_platform.acm_regional_certificate_arns_by_domain_name
 
   depends_on = [
     module.vpcs,
@@ -64,7 +64,7 @@ module "edge_containers_observability" {
   security_group_ids_by_name              = local.security_group_ids_by_name
   alb_dns_names_by_name                   = module.compute_storage.alb_dns_names_by_name
   s3_bucket_regional_domain_names_by_name = module.compute_storage.s3_bucket_regional_domain_names_by_name
-  acm_certificate_arns_by_domain_name     = module.app_platform.acm_certificate_arns_by_domain_name
+  acm_certificate_arns_by_domain_name     = module.app_platform.acm_us_east_1_certificate_arns_by_domain_name
 
   depends_on = [
     module.compute_storage
@@ -73,6 +73,11 @@ module "edge_containers_observability" {
 
 module "app_platform" {
   source = "./modules/app-platform"
+
+  providers = {
+    aws           = aws
+    aws.us_east_1 = aws.us_east_1
+  }
 
   resources_by_type          = local.resources_by_type
   vpc_ids_by_name            = local.vpc_ids_by_name

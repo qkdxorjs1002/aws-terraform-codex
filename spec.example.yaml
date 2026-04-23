@@ -45,6 +45,17 @@ project:
           inline_policies:
             - name: "allow-self-service-credentials"
               document_json: '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["iam:CreateAccessKey","iam:DeleteAccessKey","iam:ListAccessKeys","iam:UpdateAccessKey"],"Resource":"arn:aws:iam::*:user/my-tst-tf-platform-automation-user"}]}'
+    - iam_groups:
+        - name: "my-tst-tf-platform-operators-group"
+          path: "/automation/"
+          policies:
+            - "arn:aws:iam::aws:policy/ReadOnlyAccess"
+            - "my-tst-tf-secrets-read-policy"
+          users:
+            - "my-tst-tf-platform-automation-user"
+          inline_policies:
+            - name: "allow-read-iam-summary"
+              document_json: '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["iam:GetAccountSummary"],"Resource":"*"}]}'
     - iam_oidc_providers:
         - name: "github-actions"
           url: "https://token.actions.githubusercontent.com"

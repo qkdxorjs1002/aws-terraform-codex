@@ -43,22 +43,22 @@ locals {
   }
 
   cloudfront_managed_origin_request_policy_ids_by_name = {
-    "AllViewer"                                             = "216adef6-5c7f-47e4-b989-5492eafa07d3"
-    "Managed-AllViewer"                                     = "216adef6-5c7f-47e4-b989-5492eafa07d3"
-    "AllViewerAndCloudFrontHeaders-2022-06"                 = "33f36d7e-f396-46d9-90e0-52428a34d9dc"
-    "Managed-AllViewerAndCloudFrontHeaders-2022-06"         = "33f36d7e-f396-46d9-90e0-52428a34d9dc"
-    "AllViewerExceptHostHeader"                             = "b689b0a8-53d0-40ab-baf2-68738e2966ac"
-    "Managed-AllViewerExceptHostHeader"                     = "b689b0a8-53d0-40ab-baf2-68738e2966ac"
-    "CORS-CustomOrigin"                                     = "59781a5b-3903-41f3-afcb-af62929ccde1"
-    "Managed-CORS-CustomOrigin"                             = "59781a5b-3903-41f3-afcb-af62929ccde1"
-    "CORS-S3Origin"                                         = "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf"
-    "Managed-CORS-S3Origin"                                 = "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf"
-    "Elemental-MediaTailor-PersonalizedManifests"           = "775133bc-15f2-49f9-abea-afb2e0bf67d2"
-    "Managed-Elemental-MediaTailor-PersonalizedManifests"   = "775133bc-15f2-49f9-abea-afb2e0bf67d2"
-    "HostHeaderOnly"                                        = "bf0718e1-ba1e-49d1-88b1-f726733018ae"
-    "Managed-HostHeaderOnly"                                = "bf0718e1-ba1e-49d1-88b1-f726733018ae"
-    "UserAgentRefererHeaders"                               = "acba4595-bd28-49b8-b9fe-13317c0390fa"
-    "Managed-UserAgentRefererHeaders"                       = "acba4595-bd28-49b8-b9fe-13317c0390fa"
+    "AllViewer"                                           = "216adef6-5c7f-47e4-b989-5492eafa07d3"
+    "Managed-AllViewer"                                   = "216adef6-5c7f-47e4-b989-5492eafa07d3"
+    "AllViewerAndCloudFrontHeaders-2022-06"               = "33f36d7e-f396-46d9-90e0-52428a34d9dc"
+    "Managed-AllViewerAndCloudFrontHeaders-2022-06"       = "33f36d7e-f396-46d9-90e0-52428a34d9dc"
+    "AllViewerExceptHostHeader"                           = "b689b0a8-53d0-40ab-baf2-68738e2966ac"
+    "Managed-AllViewerExceptHostHeader"                   = "b689b0a8-53d0-40ab-baf2-68738e2966ac"
+    "CORS-CustomOrigin"                                   = "59781a5b-3903-41f3-afcb-af62929ccde1"
+    "Managed-CORS-CustomOrigin"                           = "59781a5b-3903-41f3-afcb-af62929ccde1"
+    "CORS-S3Origin"                                       = "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf"
+    "Managed-CORS-S3Origin"                               = "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf"
+    "Elemental-MediaTailor-PersonalizedManifests"         = "775133bc-15f2-49f9-abea-afb2e0bf67d2"
+    "Managed-Elemental-MediaTailor-PersonalizedManifests" = "775133bc-15f2-49f9-abea-afb2e0bf67d2"
+    "HostHeaderOnly"                                      = "bf0718e1-ba1e-49d1-88b1-f726733018ae"
+    "Managed-HostHeaderOnly"                              = "bf0718e1-ba1e-49d1-88b1-f726733018ae"
+    "UserAgentRefererHeaders"                             = "acba4595-bd28-49b8-b9fe-13317c0390fa"
+    "Managed-UserAgentRefererHeaders"                     = "acba4595-bd28-49b8-b9fe-13317c0390fa"
   }
 
   cloudfront_managed_response_headers_policy_ids_by_name = {
@@ -172,7 +172,7 @@ locals {
     )
   }
 
-  # viewer_certificate.acm_certificate_name maps to acm_certificates[].domain_name.
+  # viewer_certificate.acm_certificate_name maps to acm_certificates[].name (fallback: domain_name).
   cloudfront_viewer_certificate_arns_by_distribution = {
     for distribution_name, distribution in local.cloudfront_distributions :
     distribution_name => try(coalesce(
@@ -302,6 +302,26 @@ resource "aws_cloudfront_distribution" "managed" {
     )
   ), null)
 
+  lifecycle {
+    precondition {
+      condition = (
+        length(try(each.value.aliases, [])) == 0
+        ) || (
+        lookup(local.cloudfront_viewer_certificate_arns_by_distribution, each.key, null) != null
+      )
+      error_message = "CloudFront distributions with aliases require a viewer certificate. Set viewer_certificate.acm_certificate_arn directly or use viewer_certificate.acm_certificate_name/acm_certificate_domain_name mapped to acm_certificates in us-east-1."
+    }
+
+    precondition {
+      condition = (
+        lookup(local.cloudfront_viewer_certificate_arns_by_distribution, each.key, null) == null
+        ) || (
+        can(regex("^arn:[^:]+:acm:us-east-1:", lookup(local.cloudfront_viewer_certificate_arns_by_distribution, each.key, "")))
+      )
+      error_message = "CloudFront viewer certificate must be an ACM certificate ARN in us-east-1."
+    }
+  }
+
   dynamic "origin" {
     for_each = try(each.value.origins, [])
 
@@ -347,10 +367,21 @@ resource "aws_cloudfront_distribution" "managed" {
       }
 
       dynamic "s3_origin_config" {
-        for_each = try(origin.value.type, "custom") == "s3" ? [1] : []
+        for_each = (
+          try(origin.value.type, "custom") == "s3" &&
+          try(coalesce(
+            try(origin.value.origin_access_control_id, null),
+            try(origin.value.origin_access_control_name, null),
+            try(origin.value.origin_access_control, null)
+          ), null) == null
+        ) ? [1] : []
 
         content {
-          origin_access_identity = ""
+          origin_access_identity = try(coalesce(
+            try(origin.value.s3_origin_config.origin_access_identity, null),
+            try(origin.value.origin_access_identity, null),
+            ""
+          ), "")
         }
       }
     }

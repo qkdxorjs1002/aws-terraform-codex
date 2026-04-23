@@ -115,6 +115,11 @@ output "iam_users" {
   value       = module.network_identity.iam_user_arns_by_name
 }
 
+output "iam_groups" {
+  description = "Created IAM groups"
+  value       = module.network_identity.iam_group_arns_by_name
+}
+
 output "iam_policies" {
   description = "Created IAM policies"
   value       = module.network_identity.iam_policy_arns_by_name
@@ -138,4 +143,14 @@ output "codedeploy_deployment_groups" {
 output "acm_certificates" {
   description = "Created ACM certificates keyed by domain name"
   value       = module.app_platform.acm_certificate_arns_by_domain_name
+}
+
+output "acm_certificates_regional" {
+  description = "Regional ACM certificates (project region) keyed by logical certificate name"
+  value       = module.app_platform.acm_regional_certificate_arns_by_domain_name
+}
+
+output "acm_certificates_us_east_1" {
+  description = "CloudFront ACM certificates (us-east-1) keyed by logical certificate name"
+  value       = module.app_platform.acm_us_east_1_certificate_arns_by_domain_name
 }

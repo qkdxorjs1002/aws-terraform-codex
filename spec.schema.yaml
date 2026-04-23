@@ -55,6 +55,8 @@ properties:
               $ref: "#/$defs/generic_resource_array"
             iam_users:
               $ref: "#/$defs/generic_resource_array"
+            iam_groups:
+              $ref: "#/$defs/generic_resource_array"
             iam_oidc_providers:
               $ref: "#/$defs/generic_resource_array"
             vpcs:

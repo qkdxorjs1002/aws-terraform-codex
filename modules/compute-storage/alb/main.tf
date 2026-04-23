@@ -22,7 +22,7 @@ locals {
     ]
   ])
 
-  # listener.acm_certificate_name maps to acm_certificates[].domain_name.
+  # listener.acm_certificate_name maps to acm_certificates[].name (fallback: domain_name).
   alb_listener_certificate_arns_by_key = {
     for listener in local.ec2_lb_listeners :
     listener.key => try(coalesce(
@@ -157,7 +157,7 @@ resource "aws_lb_listener" "managed" {
         ["https", "tls"],
         lower(trimspace(tostring(try(each.value.listener.protocol, "HTTP"))))
       ) || lookup(local.alb_listener_certificate_arns_by_key, each.key, null) != null
-      error_message = "HTTPS/TLS listeners require certificate_arn or acm_certificate_name/acm_certificate_domain_name mapped from acm_certificates[].domain_name."
+      error_message = "HTTPS/TLS listeners require certificate_arn or acm_certificate_name/acm_certificate_domain_name mapped from acm_certificates[].name (fallback: domain_name)."
     }
   }
 

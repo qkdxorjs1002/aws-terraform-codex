@@ -70,6 +70,27 @@ project:
               document_json: "{}" # JSON string policy document
               # or fetch policy JSON from URL:
               # document_url: "https://example.com/policy.json"
+    # iam_groups:
+    # - name: Logical IAM group name.
+    # - policies: AWS managed policy ARN or logical policy name from iam_policies.
+    # - users/user_names: IAM user names to include in the group membership.
+    # - membership_name: Optional aws_iam_group_membership name override.
+    - iam_groups:
+        - name: "<iam-group-name>"
+          path: "/"
+          policies:
+            - "arn:aws:iam::aws:policy/ReadOnlyAccess"
+            - "<iam-policy-name>"
+          users:
+            - "<iam-user-name>"
+          # user_names:
+          #   - "<iam-user-name>"
+          # membership_name: "<iam-group-membership-name>"
+          inline_policies:
+            - name: "<inline-policy-name>"
+              document_json: "{}" # JSON string policy document
+              # or fetch policy JSON from URL:
+              # document_url: "https://example.com/policy.json"
     # iam_oidc_providers:
     # - name: Logical IAM OIDC provider identifier.
     # - url: OIDC issuer URL (for example GitHub Actions).
@@ -518,7 +539,7 @@ project:
     #   - Forward action (default): set target_groups[].
     #   - HTTPS certificate: set certificate_arn explicitly, or use
     #     acm_certificate_name/acm_certificate_domain_name to resolve from
-    #     acm_certificates[].domain_name (supports managed and existing ACM entries).
+    #     acm_certificates[].name (fallback: domain_name, supports managed and existing ACM entries).
     #   - Fixed response action: set default_action.type=fixed-response and fixed_response fields.
     - ec2_load_balancers:
         - name: "<alb-name>"
@@ -1055,7 +1076,8 @@ project:
     # - viewer_certificate.*: TLS certificate and minimum protocol settings.
     #   - acm_certificate_arn: Explicit ACM certificate ARN.
     #   - acm_certificate_name/acm_certificate_domain_name: Logical reference to
-    #     acm_certificates[].domain_name (resolved to its ARN, including source=existing entries).
+    #     acm_certificates[].name (fallback: domain_name) resolved to its ARN.
+    #     For aliases/custom domains, the resolved certificate must be in us-east-1.
     # - logging.*: Access log destination and format options.
     - cloudfront_distributions:
         - name: "<cloudfront-distribution-name>"
@@ -1517,7 +1539,9 @@ project:
           multivalue_answer_routing_policy: false
 
     # acm_certificates:
-    # - domain_name: Certificate reference key and primary domain.
+    # - name: Optional logical certificate reference key (defaults to domain_name).
+    # - domain_name: Actual certificate domain used for issuance/lookup.
+    # - region: Optional certificate region selector. Use us-east-1 for CloudFront certificates.
     # - source: managed(default) to create a certificate, existing to reuse already-created ACM certificates.
     # - subject_alternative_names/validation_method/key_algorithm: Managed certificate options.
     # - wait_for_issued/validation_record_fqdns: Optional wait for managed certificates to reach ISSUED.
@@ -1527,7 +1551,9 @@ project:
     # - tags: Resource tags.
     - acm_certificates:
         - domain_name: "<domain>"
+          name: "<certificate-reference-name>"
           source: "managed" # managed | existing
+          region: "<region>" # omit for project region, set us-east-1 for CloudFront
           subject_alternative_names:
             - "*.<domain>"
           validation_method: "DNS" # DNS | EMAIL
@@ -1537,7 +1563,9 @@ project:
             - "_<validation-record>.<domain>."
           transparency_logging_enabled: true
         - domain_name: "*.<domain>"
+          name: "<cloudfront-certificate-reference-name>"
           source: "existing" # managed | existing
+          region: "us-east-1"
           # Optional explicit ARN:
           # certificate_arn: "arn:aws:acm:<region>:<account-id>:certificate/<certificate-id>"
           # Optional lookup filters:

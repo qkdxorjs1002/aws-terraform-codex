@@ -665,6 +665,16 @@ provider "aws" {
   }
 }
 
+provider "aws" {
+  alias   = "us_east_1"
+  region  = "us-east-1"
+  profile = try(local.project.profile, null)
+
+  default_tags {
+    tags = local.project_global_tags
+  }
+}
+
 data "aws_vpc" "existing_by_name" {
   for_each = local.existing_vpc_lookup_names
 
