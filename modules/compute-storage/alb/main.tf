@@ -151,6 +151,16 @@ resource "aws_lb_listener" "managed" {
   ssl_policy        = try(each.value.listener.ssl_policy, null)
   certificate_arn   = lookup(local.alb_listener_certificate_arns_by_key, each.key, null)
 
+  lifecycle {
+    precondition {
+      condition = !contains(
+        ["https", "tls"],
+        lower(trimspace(tostring(try(each.value.listener.protocol, "HTTP"))))
+      ) || lookup(local.alb_listener_certificate_arns_by_key, each.key, null) != null
+      error_message = "HTTPS/TLS listeners require certificate_arn or acm_certificate_name/acm_certificate_domain_name mapped from acm_certificates[].domain_name."
+    }
+  }
+
   default_action {
     type = each.value.action_type
     target_group_arn = each.value.action_type == "forward" ? (

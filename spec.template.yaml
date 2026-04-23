@@ -518,7 +518,7 @@ project:
     #   - Forward action (default): set target_groups[].
     #   - HTTPS certificate: set certificate_arn explicitly, or use
     #     acm_certificate_name/acm_certificate_domain_name to resolve from
-    #     acm_certificates[].domain_name.
+    #     acm_certificates[].domain_name (supports managed and existing ACM entries).
     #   - Fixed response action: set default_action.type=fixed-response and fixed_response fields.
     - ec2_load_balancers:
         - name: "<alb-name>"
@@ -1055,7 +1055,7 @@ project:
     # - viewer_certificate.*: TLS certificate and minimum protocol settings.
     #   - acm_certificate_arn: Explicit ACM certificate ARN.
     #   - acm_certificate_name/acm_certificate_domain_name: Logical reference to
-    #     acm_certificates[].domain_name (resolved to its ARN).
+    #     acm_certificates[].domain_name (resolved to its ARN, including source=existing entries).
     # - logging.*: Access log destination and format options.
     - cloudfront_distributions:
         - name: "<cloudfront-distribution-name>"
@@ -1517,19 +1517,33 @@ project:
           multivalue_answer_routing_policy: false
 
     # acm_certificates:
-    # - domain_name/subject_alternative_names: Primary and SAN domains.
-    # - validation_method: Domain validation mechanism.
-    # - hosted_zone: Hosted zone used for DNS validation automation.
+    # - domain_name: Certificate reference key and primary domain.
+    # - source: managed(default) to create a certificate, existing to reuse already-created ACM certificates.
+    # - subject_alternative_names/validation_method/key_algorithm: Managed certificate options.
+    # - wait_for_issued/validation_record_fqdns: Optional wait for managed certificates to reach ISSUED.
+    # - certificate_arn: Optional explicit ARN for source=existing (skip lookup).
+    # - lookup_statuses/most_recent: Lookup controls for source=existing when certificate_arn is omitted.
     # - transparency_logging_enabled: Certificate transparency log preference.
     # - tags: Resource tags.
     - acm_certificates:
         - domain_name: "<domain>"
+          source: "managed" # managed | existing
           subject_alternative_names:
             - "*.<domain>"
           validation_method: "DNS" # DNS | EMAIL
           key_algorithm: "RSA_2048" # RSA_2048 | RSA_4096 | EC_prime256v1 | EC_secp384r1
-          hosted_zone: "<domain>"
+          wait_for_issued: true
+          validation_record_fqdns:
+            - "_<validation-record>.<domain>."
           transparency_logging_enabled: true
+        - domain_name: "*.<domain>"
+          source: "existing" # managed | existing
+          # Optional explicit ARN:
+          # certificate_arn: "arn:aws:acm:<region>:<account-id>:certificate/<certificate-id>"
+          # Optional lookup filters:
+          lookup_statuses:
+            - "ISSUED"
+          most_recent: true
     # dynamodb_tables:
     # - name/billing_mode/hash_key/range_key: Table identity, billing model, and primary key schema.
     # - attributes[]: Attribute type definitions used by primary and secondary indexes.
