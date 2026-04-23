@@ -119,6 +119,7 @@ project:
 - Terraform state에 없는 AWS 리소스는 이미 존재해도 Terraform이 수정/삭제하지 않습니다.
 - 권한 레이어까지 강제하려면 `aws:ResourceTag/ManagedBy`가 프로젝트 값과 다를 때 update/delete를 거부하는 IAM/SCP 정책을 함께 고려하세요.
 - `security_groups` 규칙에서 `source.type`/`destination.type = security-group`일 때 `value`는 논리 SG 이름 또는 실제 SG ID(`sg-...`)를 사용할 수 있습니다.
+- `security_groups` 규칙에서 `source.type`/`destination.type = prefix-list`일 때 `value`는 실제 Prefix List ID(`pl-...`) 또는 관리형 Prefix List 이름(예: `com.amazonaws.global.cloudfront.origin-facing`)을 사용할 수 있으며, 내부적으로 `aws_ec2_managed_prefix_list`로 해석됩니다.
 - `security_groups.description`, `rds_subnet_groups.description`, `rds_parameter_groups.description`은 선택값이며, 미입력 시 provider 기본값 `"Managed by Terraform"` 대신 빈 문자열(`""`)이 설정됩니다.
 - Security Group rule 식별자와 Route Table association은 목록 순서와 무관한 key를 사용하므로, 단순 순서 변경만으로 리소스 주소 드리프트가 발생하지 않습니다.
 - `iam_roles.policies`, `iam_users.policies`는 정책 ARN뿐 아니라 `iam_policies`의 논리 이름도 사용할 수 있습니다.

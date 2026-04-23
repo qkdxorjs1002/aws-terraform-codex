@@ -117,6 +117,7 @@ Use this checklist while editing:
 - Resources not in Terraform state are not modified or deleted, even if they already exist in AWS.
 - For stricter guardrails, consider IAM/SCP controls that deny update/delete when `aws:ResourceTag/ManagedBy` does not match your project value.
 - For `security_groups` rules with `source.type`/`destination.type = security-group`, `value` can be either a logical security group name or a literal `sg-...` ID.
+- For `security_groups` rules with `source.type`/`destination.type = prefix-list`, `value` can be either a literal `pl-...` ID or a managed prefix list name (for example `com.amazonaws.global.cloudfront.origin-facing`), resolved by `aws_ec2_managed_prefix_list`.
 - `security_groups.description`, `rds_subnet_groups.description`, and `rds_parameter_groups.description` are optional; when omitted, Terraform sets an empty string (`""`) instead of the provider default `"Managed by Terraform"`.
 - Security group rule identity and route-table associations use order-insensitive keys, so list reordering alone does not trigger resource address drift.
 - `iam_roles.policies` and `iam_users.policies` accept either policy ARNs or logical names from `iam_policies`.

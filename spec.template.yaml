@@ -171,13 +171,17 @@ project:
               to_port: 65535
     # security_groups:
     # - name: Logical security group identifier.
+    # - description: Optional SG description (defaults to empty string when omitted).
     # - vpc: Parent VPC logical name.
     # - inbound_rules[]: Inbound rules (description, protocol, port range, source).
     # - outbound_rules[]: Outbound rules (description, protocol, port range, destination).
     # - source/destination.type "security-group" accepts a logical SG name from this spec
     #   or a literal security group ID (sg-...).
+    # - source/destination.type "prefix-list" accepts either a literal prefix list ID (pl-...)
+    #   or a managed prefix list name (for example com.amazonaws.global.cloudfront.origin-facing).
     - security_groups:
         - name: "<security-group-name>"
+          description: "<optional-security-group-description>"
           vpc: "<vpc-name>"
           revoke_rules_on_delete: false
           inbound_rules:
@@ -206,6 +210,12 @@ project:
               destination:
                 type: "security-group"
                 value: "<security-group-name-or-id>"
+            - description: "<to-managed-prefix-list>"
+              protocol: "tcp"
+              port_range: 443
+              destination:
+                type: "prefix-list"
+                value: "com.amazonaws.global.cloudfront.origin-facing"
     # vpc_endpoints:
     # - name: Logical VPC endpoint identifier.
     # - vpc: Parent VPC logical name.

@@ -427,6 +427,30 @@ locals {
     ]
   ])
 
+  security_group_prefix_list_lookup_names = toset([
+    for candidate in concat(
+      [
+        for rule in local.security_group_inbound_rules :
+        try(rule.peer_value, null)
+        if try(rule.peer_type, "") == "prefix-list"
+      ],
+      [
+        for rule in local.security_group_outbound_rules :
+        try(rule.peer_value, null)
+        if try(rule.peer_type, "") == "prefix-list"
+      ]
+    ) :
+    trimspace(tostring(candidate))
+    if try(trimspace(tostring(candidate)) != "", false)
+    && length(regexall("^pl-[0-9a-f]+$", lower(trimspace(tostring(candidate))))) == 0
+    && length(regexall("^\\$\\{", trimspace(tostring(candidate)))) == 0
+  ])
+
+  security_group_prefix_list_ids_by_name = {
+    for name, prefix_list in data.aws_ec2_managed_prefix_list.by_name :
+    name => prefix_list.id
+  }
+
   security_group_inbound_rules_by_key = {
     for rule in local.security_group_inbound_rules :
     format(
@@ -696,6 +720,11 @@ data "aws_iam_role" "existing_by_name" {
   name     = each.value
 }
 
+data "aws_ec2_managed_prefix_list" "by_name" {
+  for_each = local.security_group_prefix_list_lookup_names
+  name     = each.value
+}
+
 module "vpcs" {
   source   = "./modules/vpc"
   for_each = local.vpcs
@@ -840,7 +869,11 @@ resource "aws_vpc_security_group_ingress_rule" "managed" {
   cidr_ipv4 = each.value.peer_type == "ip" ? each.value.peer_value : null
   cidr_ipv6 = each.value.peer_type == "ipv6" ? each.value.peer_value : null
 
-  prefix_list_id = each.value.peer_type == "prefix-list" ? each.value.peer_value : null
+  prefix_list_id = each.value.peer_type == "prefix-list" ? lookup(
+    local.security_group_prefix_list_ids_by_name,
+    each.value.peer_value,
+    each.value.peer_value
+  ) : null
 
   referenced_security_group_id = each.value.peer_type == "security-group" ? (
     contains(local.security_group_names, each.value.peer_value) ?
@@ -863,7 +896,11 @@ resource "aws_vpc_security_group_egress_rule" "managed" {
   cidr_ipv4 = each.value.peer_type == "ip" ? each.value.peer_value : null
   cidr_ipv6 = each.value.peer_type == "ipv6" ? each.value.peer_value : null
 
-  prefix_list_id = each.value.peer_type == "prefix-list" ? each.value.peer_value : null
+  prefix_list_id = each.value.peer_type == "prefix-list" ? lookup(
+    local.security_group_prefix_list_ids_by_name,
+    each.value.peer_value,
+    each.value.peer_value
+  ) : null
 
   referenced_security_group_id = each.value.peer_type == "security-group" ? (
     contains(local.security_group_names, each.value.peer_value) ?
