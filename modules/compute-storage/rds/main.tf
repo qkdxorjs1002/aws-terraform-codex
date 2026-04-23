@@ -19,7 +19,7 @@ resource "aws_db_subnet_group" "managed" {
   for_each = local.rds_subnet_groups
 
   name        = each.value.name
-  description = try(each.value.description, each.value.name)
+  description = try(each.value.description, "")
   subnet_ids = [
     for subnet in distinct(compact(concat(
       try(each.value.subnet_ids, []),
@@ -42,7 +42,7 @@ resource "aws_db_parameter_group" "managed" {
 
   name        = each.value.name
   family      = each.value.family
-  description = try(each.value.description, each.value.name)
+  description = try(each.value.description, "")
 
   dynamic "parameter" {
     for_each = try(each.value.parameters, [])

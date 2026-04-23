@@ -814,7 +814,8 @@ module "security_groups" {
   source   = "./modules/security-group"
   for_each = local.security_groups
 
-  name = each.value.name
+  name        = each.value.name
+  description = try(each.value.description, "")
   vpc_id = lookup(
     local.vpc_ids_by_name,
     coalesce(try(each.value.vpc_id, null), try(each.value.vpc_name, null), try(each.value.vpc, null)),
