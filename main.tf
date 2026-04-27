@@ -567,7 +567,8 @@ locals {
   }
 
   eks_before_nodegroup_addon_names = toset([
-    "vpc-cni"
+    "vpc-cni",
+    "eks-pod-identity-agent"
   ])
 
   eks_addons = {
