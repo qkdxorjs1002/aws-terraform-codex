@@ -242,6 +242,8 @@ locals {
     for candidate in concat(
       [for cluster in try(local.resources_by_type.eks_clusters, []) : try(cluster.iam.cluster_role_name, null)],
       [for node_group in try(local.resources_by_type.eks_node_groups, []) : try(node_group.iam_role_name, null)],
+      [for fargate_profile in try(local.resources_by_type.eks_fargate_profiles, []) : try(fargate_profile.pod_execution_role_name, null)],
+      [for association in try(local.resources_by_type.eks_pod_identity_associations, []) : try(association.role_name, null)],
       [for deployment_group in try(local.resources_by_type.codedeploy_deployment_groups, []) : try(deployment_group.service_role_name, null)],
       [for rds_instance in try(local.resources_by_type.rds_instances, []) : try(rds_instance.monitoring_role_name, null)]
     ) :

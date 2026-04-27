@@ -106,8 +106,8 @@ output "security_groups" {
 }
 
 output "iam_roles" {
-  description = "Created IAM roles"
-  value       = module.network_identity.iam_role_arns_by_name
+  description = "Resolved IAM roles"
+  value       = local.iam_role_arns_by_name
 }
 
 output "iam_users" {
@@ -121,7 +121,7 @@ output "iam_groups" {
 }
 
 output "iam_policies" {
-  description = "Created IAM policies"
+  description = "Resolved IAM policies"
   value       = module.network_identity.iam_policy_arns_by_name
 }
 

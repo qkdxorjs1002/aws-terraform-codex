@@ -122,7 +122,8 @@ project:
 - `security_groups` 규칙에서 `source.type`/`destination.type = prefix-list`일 때 `value`는 실제 Prefix List ID(`pl-...`) 또는 관리형 Prefix List 이름(예: `com.amazonaws.global.cloudfront.origin-facing`)을 사용할 수 있으며, 내부적으로 `aws_ec2_managed_prefix_list`로 해석됩니다.
 - `security_groups.description`, `rds_subnet_groups.description`, `rds_parameter_groups.description`은 선택값이며, 미입력 시 provider 기본값 `"Managed by Terraform"` 대신 빈 문자열(`""`)이 설정됩니다.
 - Security Group rule 식별자와 Route Table association은 목록 순서와 무관한 key를 사용하므로, 단순 순서 변경만으로 리소스 주소 드리프트가 발생하지 않습니다.
-- `iam_roles.policies`, `iam_users.policies`, `iam_groups.policies`는 정책 ARN뿐 아니라 `iam_policies`의 논리 이름도 사용할 수 있습니다.
+- `iam_roles`와 `iam_policies`는 `source: existing`으로 기존 IAM Role/Policy를 읽어와 동일한 논리 참조 맵에 노출할 수 있습니다. AWS 실제 이름이 `name`과 다르면 `role_name`/`policy_name`을, 조회 없이 ARN을 직접 쓰려면 `role_arn`/`policy_arn`을 사용하세요.
+- `iam_roles.policies`, `iam_users.policies`, `iam_groups.policies`는 정책 ARN뿐 아니라 `iam_policies`의 논리 이름도 사용할 수 있습니다. 논리 정책 이름은 관리형 정책과 기존 정책 모두를 가리킬 수 있습니다.
 - IAM OIDC Provider: `iam_oidc_providers`로 IAM OpenID Connect Provider를 생성할 수 있고, `iam_roles.assume_role_policy`는 `templatestring()`으로 `${oidc_provider["<이름-또는-URL>"].arn}`(별칭 `${iam_oidc_provider["<이름-또는-URL>"].arn}`) 참조를 지원합니다.
 - `iam_policies.document_json`은 `${oidc_provider[...]}` / `${iam_oidc_provider[...]}`뿐 아니라 `${cloudfront_distribution["<name>"].arn}` 보간도 지원합니다. CloudFront ARN은 같은 apply에서 생성되는 관리형 `cloudfront_distributions` 결과를 먼저 사용하고, 필요 시 스펙의 `distribution_arn` 또는 `distribution_id`로 fallback 합니다. 정책 JSON에서 `${...}`를 리터럴로 써야 하면 `$${...}`로 이스케이프하세요.
 - CodeDeploy: `codedeploy_applications`, `codedeploy_deployment_groups`를 지원합니다. Deployment Group의 `service_role_name`은 `iam_roles` 논리 이름으로 해석되고, `autoscaling_groups`와 `load_balancer_info.target_groups`도 논리 이름 기반 참조를 지원합니다.
@@ -131,8 +132,8 @@ project:
 
 #### 기능별 메모
 
-- EKS Pod Identity: `role_name`(논리 role 이름) 또는 `role_arn`(리터럴 ARN) 사용을 권장합니다. Pod Identity role trust principal은 `pods.eks.amazonaws.com`이며 `sts:AssumeRole`, `sts:TagSession`을 포함해야 합니다.
-- IAM identity: 스펙 기반 워크플로우에서 `iam_roles`, `iam_users`, `iam_groups`, customer-managed `iam_policies`를 지원합니다.
+- EKS Pod Identity: `role_name`(논리 role 이름) 또는 `role_arn`(리터럴 ARN) 사용을 권장합니다. `role_name`은 관리형 Role, `iam_roles.source: existing` Role, 이름으로 자동 조회된 기존 Role을 해석할 수 있습니다. Pod Identity role trust principal은 `pods.eks.amazonaws.com`이며 `sts:AssumeRole`, `sts:TagSession`을 포함해야 합니다.
+- IAM identity: 스펙 기반 워크플로우에서 `iam_roles`, `iam_users`, `iam_groups`, customer-managed `iam_policies`를 지원합니다. 기존 IAM Role/Policy는 `source: existing`으로 선언해 참조 전용으로 사용할 수 있습니다.
 - IAM Group membership: `iam_groups.users`(별칭 `iam_groups.user_names`)로 `aws_iam_group_membership` 기반 그룹 멤버십을 관리할 수 있고, 필요하면 `membership_name`으로 멤버십 리소스 이름을 지정할 수 있습니다.
 - Inline IAM policy: `iam_roles.inline_policies`, `iam_users.inline_policies`, `iam_groups.inline_policies`, `eks_irsa_roles.inline_policies`는 `document_json` 또는 `document_url` 중 하나를 사용할 수 있습니다(예: `https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/refs/heads/main/docs/install/iam_policy.json`).
 - Launch Template AMI: `image_id`는 `ami-*` 또는 AMI 이름을 받을 수 있고, AMI 이름 조회는 `image_owners`(기본 `["self"]`), `image_most_recent`(기본 `true`)로 제어합니다.

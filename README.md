@@ -120,7 +120,8 @@ Use this checklist while editing:
 - For `security_groups` rules with `source.type`/`destination.type = prefix-list`, `value` can be either a literal `pl-...` ID or a managed prefix list name (for example `com.amazonaws.global.cloudfront.origin-facing`), resolved by `aws_ec2_managed_prefix_list`.
 - `security_groups.description`, `rds_subnet_groups.description`, and `rds_parameter_groups.description` are optional; when omitted, Terraform sets an empty string (`""`) instead of the provider default `"Managed by Terraform"`.
 - Security group rule identity and route-table associations use order-insensitive keys, so list reordering alone does not trigger resource address drift.
-- `iam_roles.policies`, `iam_users.policies`, and `iam_groups.policies` accept either policy ARNs or logical names from `iam_policies`.
+- `iam_roles` and `iam_policies` support `source: existing` to read existing IAM roles/policies and expose them through the same logical reference maps. Use `role_name`/`policy_name` when the physical AWS name differs from `name`, or `role_arn`/`policy_arn` to skip lookup.
+- `iam_roles.policies`, `iam_users.policies`, and `iam_groups.policies` accept either policy ARNs or logical names from `iam_policies`; logical policy names can point to managed or existing policies.
 - IAM OIDC providers: `iam_oidc_providers` provisions IAM OpenID Connect providers, and `iam_roles.assume_role_policy` supports `templatestring()` interpolation with `${oidc_provider["<name-or-url>"].arn}` (alias `${iam_oidc_provider["<name-or-url>"].arn}`).
 - `iam_policies.document_json` supports interpolation for `${oidc_provider[...]}` / `${iam_oidc_provider[...]}` and `${cloudfront_distribution["<name>"].arn}`. CloudFront ARN interpolation first resolves from managed `cloudfront_distributions` created in the same apply, then falls back to `distribution_arn` or `distribution_id` from the spec when needed. If you need a literal `${...}` string, escape it as `$${...}`.
 - CodeDeploy: `codedeploy_applications` and `codedeploy_deployment_groups` are supported. Deployment groups can resolve `service_role_name` from `iam_roles`, `autoscaling_groups` from logical ASG names, and `load_balancer_info.target_groups` from logical ALB target group names.
@@ -129,8 +130,8 @@ Use this checklist while editing:
 
 #### Feature Notes
 
-- EKS Pod Identity: prefer `role_name` (logical role name) or `role_arn` (literal ARN). The role trust principal must be `pods.eks.amazonaws.com` with `sts:AssumeRole` and `sts:TagSession`.
-- IAM identities: `iam_roles`, `iam_users`, `iam_groups`, and customer-managed `iam_policies` are supported in the spec-first flow.
+- EKS Pod Identity: prefer `role_name` (logical role name) or `role_arn` (literal ARN). `role_name` can resolve managed roles, `iam_roles.source: existing` roles, or existing roles discovered by name. The role trust principal must be `pods.eks.amazonaws.com` with `sts:AssumeRole` and `sts:TagSession`.
+- IAM identities: `iam_roles`, `iam_users`, `iam_groups`, and customer-managed `iam_policies` are supported in the spec-first flow. Existing IAM roles and policies can be declared with `source: existing` for reference-only use.
 - IAM group membership: `iam_groups.users` (alias `iam_groups.user_names`) manages group memberships with `aws_iam_group_membership`; set optional `membership_name` when a custom membership resource name is needed.
 - Inline IAM policies: `iam_roles.inline_policies`, `iam_users.inline_policies`, `iam_groups.inline_policies`, and `eks_irsa_roles.inline_policies` accept either `document_json` or `document_url` (for example `https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/refs/heads/main/docs/install/iam_policy.json`).
 - Launch templates AMI: `image_id` accepts either `ami-*` or an AMI name; AMI-name lookup can be tuned with `image_owners` (default `["self"]`) and `image_most_recent` (default `true`).

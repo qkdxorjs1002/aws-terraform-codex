@@ -1,7 +1,19 @@
 locals {
-  iam_roles = {
+  iam_roles_all = {
     for role in try(var.resources_by_type.iam_roles, []) :
     role.name => role
+  }
+
+  existing_iam_roles = {
+    for role_name, role in local.iam_roles_all :
+    role_name => role
+    if lower(try(trimspace(role.source), "")) == "existing" || try(role.existing, false) == true
+  }
+
+  iam_roles = {
+    for role_name, role in local.iam_roles_all :
+    role_name => role
+    if !contains(keys(local.existing_iam_roles), role_name)
   }
 
   iam_roles_for_instance_profiles = {
@@ -26,9 +38,21 @@ locals {
     group.name => group
   }
 
-  iam_policies = {
+  iam_policies_all = {
     for policy in try(var.resources_by_type.iam_policies, []) :
     policy.name => policy
+  }
+
+  existing_iam_policies = {
+    for policy_name, policy in local.iam_policies_all :
+    policy_name => policy
+    if lower(try(trimspace(policy.source), "")) == "existing" || try(policy.existing, false) == true
+  }
+
+  iam_policies = {
+    for policy_name, policy in local.iam_policies_all :
+    policy_name => policy
+    if !contains(keys(local.existing_iam_policies), policy_name)
   }
 
   iam_oidc_providers = {
@@ -68,7 +92,7 @@ locals {
     flow_log.name => flow_log
   }
 
-  iam_policies_defined = toset(keys(local.iam_policies))
+  iam_policies_defined = toset(keys(local.iam_policies_all))
 
   iam_policy_references = toset([
     for candidate in concat(
@@ -85,6 +109,36 @@ locals {
     name
     if length(regexall("^arn:", lower(name))) == 0
   ])
+
+  existing_iam_roles_with_explicit_arn = {
+    for role_name, role in local.existing_iam_roles :
+    role_name => coalesce(
+      try(trimspace(role.role_arn), "") != "" ? trimspace(role.role_arn) : null,
+      try(trimspace(role.arn), "") != "" ? trimspace(role.arn) : null
+    )
+    if try(trimspace(role.role_arn), "") != "" || try(trimspace(role.arn), "") != ""
+  }
+
+  existing_iam_roles_by_name = {
+    for role_name, role in local.existing_iam_roles :
+    role_name => role
+    if !contains(keys(local.existing_iam_roles_with_explicit_arn), role_name)
+  }
+
+  existing_iam_policies_with_explicit_arn = {
+    for policy_name, policy in local.existing_iam_policies :
+    policy_name => coalesce(
+      try(trimspace(policy.policy_arn), "") != "" ? trimspace(policy.policy_arn) : null,
+      try(trimspace(policy.arn), "") != "" ? trimspace(policy.arn) : null
+    )
+    if try(trimspace(policy.policy_arn), "") != "" || try(trimspace(policy.arn), "") != ""
+  }
+
+  existing_iam_policies_by_name = {
+    for policy_name, policy in local.existing_iam_policies :
+    policy_name => policy
+    if !contains(keys(local.existing_iam_policies_with_explicit_arn), policy_name)
+  }
 
   iam_policy_document_urls = toset(concat(
     [
@@ -118,10 +172,25 @@ locals {
     ]
   ))
 
-  existing_iam_policy_arns_by_name = {
-    for name, existing_iam_policy in data.aws_iam_policy.existing_by_name :
-    name => existing_iam_policy.arn
-  }
+  existing_iam_role_arns_by_name = merge(
+    local.existing_iam_roles_with_explicit_arn,
+    {
+      for name, existing_iam_role in data.aws_iam_role.existing_by_name :
+      name => existing_iam_role.arn
+    }
+  )
+
+  existing_iam_policy_arns_by_name = merge(
+    local.existing_iam_policies_with_explicit_arn,
+    {
+      for name, existing_iam_policy in data.aws_iam_policy.existing_declared_by_name :
+      name => existing_iam_policy.arn
+    },
+    {
+      for name, existing_iam_policy in data.aws_iam_policy.existing_reference_by_name :
+      name => existing_iam_policy.arn
+    }
+  )
 
   iam_policy_arns_by_name = merge(
     local.existing_iam_policy_arns_by_name,
@@ -255,10 +324,13 @@ locals {
     ]
   ])
 
-  iam_role_arns_by_name = {
-    for name, role in aws_iam_role.managed :
-    name => role.arn
-  }
+  iam_role_arns_by_name = merge(
+    local.existing_iam_role_arns_by_name,
+    {
+      for name, role in aws_iam_role.managed :
+      name => role.arn
+    }
+  )
 
   cloudfront_distribution_attributes_by_name = {
     for distribution in try(var.resources_by_type.cloudfront_distributions, []) :
@@ -315,7 +387,25 @@ data "http" "iam_policy_document" {
   }
 }
 
-data "aws_iam_policy" "existing_by_name" {
+data "aws_iam_role" "existing_by_name" {
+  for_each = local.existing_iam_roles_by_name
+  name = (
+    try(trimspace(each.value.role_name), "") != "" ?
+    trimspace(each.value.role_name) :
+    each.value.name
+  )
+}
+
+data "aws_iam_policy" "existing_declared_by_name" {
+  for_each = local.existing_iam_policies_by_name
+  name = (
+    try(trimspace(each.value.policy_name), "") != "" ?
+    trimspace(each.value.policy_name) :
+    each.value.name
+  )
+}
+
+data "aws_iam_policy" "existing_reference_by_name" {
   for_each = local.existing_iam_policy_lookup_names
   name     = each.value
 }

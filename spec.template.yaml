@@ -21,14 +21,21 @@ project:
   resources:
     # iam_roles:
     # - name: Logical IAM role name to reference from other resources in this spec.
+    # - source: managed(default) to create a role, existing to read an already-created role.
+    # - For source=existing, set role_name when the physical IAM role name differs from name,
+    #   or set role_arn to skip lookup.
     # - policies: AWS managed policy ARN or logical policy name from iam_policies.
     # - assume_role_policy supports templatestring() interpolation with:
     #   ${oidc_provider["<iam-oidc-provider-name-or-url>"].arn}
     #   (alias: ${iam_oidc_provider["<iam-oidc-provider-name-or-url>"].arn})
     - iam_roles:
         - name: "<iam-role-name>"
+          source: "managed" # managed | existing
           description: "<iam-role-description>"
           path: "/"
+          # For source=existing:
+          # role_name: "<existing-iam-role-name>"
+          # role_arn: "arn:aws:iam::<account-id>:role/<existing-role-name>"
           assume_role_policy: "{}" # JSON string trust policy document
           max_session_duration: 3600
           permissions_boundary: "arn:aws:iam::<account-id>:policy/<permissions-boundary-policy>"
@@ -41,6 +48,9 @@ project:
               # document_url: "https://example.com/policy.json"
     # iam_policies:
     # - name: Logical IAM policy name to reference from iam_roles/iam_users.
+    # - source: managed(default) to create a policy, existing to read an already-created policy.
+    # - For source=existing, set policy_name when the physical IAM policy name differs from name,
+    #   or set policy_arn to skip lookup.
     # - Exactly one of document_json or document_url should be provided.
     # - document_json supports templatestring() interpolation with:
     #   ${oidc_provider["<iam-oidc-provider-name-or-url>"].arn}
@@ -49,8 +59,12 @@ project:
     #   (requires cloudfront_distributions[].distribution_id or distribution_arn for stable ARN resolution)
     - iam_policies:
         - name: "<iam-policy-name>"
+          source: "managed" # managed | existing
           description: "<iam-policy-description>"
           path: "/"
+          # For source=existing:
+          # policy_name: "<existing-iam-policy-name>"
+          # policy_arn: "arn:aws:iam::<account-id>:policy/<existing-policy-name>"
           document_json: "{}" # JSON string policy document
           # or fetch policy JSON from URL:
           # document_url: "https://example.com/policy.json"

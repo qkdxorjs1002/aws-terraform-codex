@@ -1,8 +1,5 @@
 output "iam_role_arns_by_name" {
-  value = {
-    for name, role in aws_iam_role.managed :
-    name => role.arn
-  }
+  value = local.iam_role_arns_by_name
 }
 
 output "iam_instance_profile_names_by_role_name" {
@@ -27,10 +24,7 @@ output "iam_group_arns_by_name" {
 }
 
 output "iam_policy_arns_by_name" {
-  value = {
-    for name, policy in aws_iam_policy.managed :
-    name => policy.arn
-  }
+  value = local.iam_policy_arns_by_name
 }
 
 output "iam_oidc_provider_arns_by_key" {
