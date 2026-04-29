@@ -809,7 +809,7 @@ project:
     # - repository/chart/version: Helm chart source and optional fixed version.
     #   For private ECR OCI charts, use repository as:
     #   oci://<account-id>.dkr.ecr.<region>.amazonaws.com/<repo-path>
-    #   and Terraform will fetch ECR auth token automatically.
+    #   and Terraform will run aws ecr get-login-password + helm registry login before Helm operations.
     # - namespace/create_namespace: Namespace target and namespace auto-create behavior.
     # - wait/wait_for_jobs/timeout: Helm readiness and install timeout controls.
     # - image_pull_policy: Optional shorthand for Helm set image.pullPolicy.

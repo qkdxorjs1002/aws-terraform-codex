@@ -148,7 +148,7 @@ Use this checklist while editing:
 - EKS add-on auto defaults: `auto` applies `vpc-cni`, `kube-proxy`, and `eks-pod-identity-agent` in `before_nodegroup`; other add-ons (for example `coredns`, `aws-ebs-csi-driver`) default to `after_nodegroup` to avoid replica readiness stalls before worker nodes exist.
 - EKS dependency ordering: if a launch template references `cluster.*.security_group_id`, the cluster is resolved first so node groups can consume the launch template safely.
 - EKS node groups: `launch_template.version` supports explicit versions plus `$Latest`/`$Default`, and symbolic versions are normalized to numeric versions to avoid persistent plan drift.
-- EKS Helm with private ECR OCI (`oci://<account>.dkr.ecr.<region>.amazonaws.com/...`): module auto-fetches ECR auth and injects Helm repository credentials.
+- EKS Helm with private ECR OCI (`oci://<account>.dkr.ecr.<region>.amazonaws.com/...`): module runs `aws ecr get-login-password` and `helm registry login` immediately before Helm release operations, so AWS CLI and Helm CLI must be available in the Terraform runner.
 - EKS Helm jobs: `wait_for_jobs` is supported and recommended for charts like AWS Load Balancer Controller that rely on jobs for webhook readiness.
 - EKS Helm image pull policy: `image_pull_policy` is a shorthand for Helm `set` key `image.pullPolicy` (ignored when `set` already includes `image.pullPolicy`).
 - Kubernetes Services: `k8s_services` manages `Service` resources used by in-cluster traffic and TargetGroupBinding backends.

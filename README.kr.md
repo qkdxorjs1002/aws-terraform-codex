@@ -150,7 +150,7 @@ project:
 - EKS Add-on `auto` 기본값: `vpc-cni`, `kube-proxy`, `eks-pod-identity-agent`는 `before_nodegroup`으로 분류되고, 그 외 Add-on(예: `coredns`, `aws-ebs-csi-driver`)은 Worker Node 생성 전 replica readiness 정체를 피하기 위해 `after_nodegroup`으로 분류됩니다.
 - EKS 의존성 순서: Launch Template이 `cluster.*.security_group_id`를 참조하면 Terraform이 EKS cluster를 먼저 해석한 뒤 Launch Template을 생성해 Node Group에서 안전하게 참조됩니다.
 - EKS Node Group 버전: `launch_template.version`은 명시 버전과 `$Latest`/`$Default`를 모두 지원하고, 반복 plan diff 방지를 위해 내부적으로 숫자 버전으로 정규화됩니다.
-- EKS Helm + private ECR OCI (`oci://<account>.dkr.ecr.<region>.amazonaws.com/...`): 모듈이 ECR 인증 토큰을 자동 조회해 Helm 저장소 인증 정보를 주입합니다.
+- EKS Helm + private ECR OCI (`oci://<account>.dkr.ecr.<region>.amazonaws.com/...`): 모듈이 Helm Release 작업 직전에 `aws ecr get-login-password`와 `helm registry login`을 실행하므로 Terraform 실행 환경에 AWS CLI와 Helm CLI가 필요합니다.
 - EKS Helm Job 대기: `wait_for_jobs`를 지원하며 AWS Load Balancer Controller 같은 chart에서 webhook readiness Job 완료까지 대기할 수 있습니다.
 - EKS Helm 이미지 정책: `image_pull_policy`는 Helm `set`의 `image.pullPolicy` 축약 필드입니다(`set`에 `image.pullPolicy`가 이미 있으면 무시).
 - Kubernetes Service: `k8s_services`로 클러스터 내부 트래픽 및 TargetGroupBinding 백엔드로 사용하는 `Service` 리소스를 관리합니다.

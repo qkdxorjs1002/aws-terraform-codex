@@ -226,24 +226,29 @@ locals {
     ]
   }
 
-  helm_ecr_oci_repository_pattern = "^oci://([0-9]{12})\\.dkr\\.ecr\\.[a-z0-9-]+\\.amazonaws\\.com(\\.cn)?(?:/.*)?$"
+  helm_ecr_oci_repository_pattern = "^oci://([0-9]{12})\\.dkr\\.ecr\\.([a-z0-9-]+)\\.amazonaws\\.com(\\.cn)?(?:/.*)?$"
 
-  helm_ecr_oci_registry_id_by_release = {
+  helm_ecr_oci_repository_matches_by_release = {
     for release_key, release in local.eks_helm_releases :
-    release_key => regex(local.helm_ecr_oci_repository_pattern, try(trimspace(release.repository), ""))[0]
+    release_key => regex(local.helm_ecr_oci_repository_pattern, try(trimspace(release.repository), ""))
     if length(regexall(local.helm_ecr_oci_repository_pattern, try(trimspace(release.repository), ""))) > 0
   }
 
-  helm_ecr_oci_registry_ids = toset(values(local.helm_ecr_oci_registry_id_by_release))
-
-  helm_repository_username_by_release = {
-    for release_key, registry_id in local.helm_ecr_oci_registry_id_by_release :
-    release_key => "AWS"
+  helm_ecr_oci_registry_host_by_release = {
+    for release_key, release in local.eks_helm_releases :
+    release_key => split("/", trimprefix(trimspace(release.repository), "oci://"))[0]
+    if contains(keys(local.helm_ecr_oci_repository_matches_by_release), release_key)
   }
 
-  helm_repository_password_by_release = {
-    for release_key, registry_id in local.helm_ecr_oci_registry_id_by_release :
-    release_key => trimprefix(base64decode(data.aws_ecr_authorization_token.helm_oci_registry[registry_id].authorization_token), "AWS:")
+  helm_ecr_oci_registry_hosts = toset(values(local.helm_ecr_oci_registry_host_by_release))
+
+  helm_ecr_oci_registries = {
+    for host in local.helm_ecr_oci_registry_hosts :
+    host => {
+      registry_id = split(".", host)[0]
+      region      = split(".", host)[3]
+      host        = host
+    }
   }
 
   k8s_target_group_binding_manifests = {
@@ -313,12 +318,6 @@ data "aws_eks_cluster" "helm_target" {
   depends_on = [terraform_data.eks_cluster_prerequisites]
 }
 
-data "aws_ecr_authorization_token" "helm_oci_registry" {
-  for_each = local.helm_ecr_oci_registry_ids
-
-  registry_id = each.value
-}
-
 data "http" "eks_irsa_inline_policy_document" {
   for_each = local.eks_irsa_inline_policy_document_urls
 
@@ -382,6 +381,37 @@ resource "terraform_data" "eks_helm_single_cluster_guard" {
       error_message = "eks_helm_releases, k8s_storage_classes, k8s_deployments, k8s_services, and k8s_target_group_bindings currently support only one target cluster per spec apply."
     }
   }
+}
+
+resource "terraform_data" "helm_ecr_oci_registry_login" {
+  for_each = local.helm_ecr_oci_registries
+
+  input = {
+    host               = each.value.host
+    region             = each.value.region
+    profile_arg_string = local.aws_cli_profile_arg_string
+  }
+
+  triggers_replace = [
+    timestamp()
+  ]
+
+  provisioner "local-exec" {
+    interpreter = ["/bin/bash", "-c"]
+    command     = <<-EOT
+      set -euo pipefail
+
+      command -v aws >/dev/null
+      command -v helm >/dev/null
+
+      aws ecr get-login-password --region '${self.input.region}'${self.input.profile_arg_string} \
+        | helm registry login --username AWS --password-stdin '${self.input.host}' >/dev/null
+    EOT
+  }
+
+  depends_on = [
+    terraform_data.eks_runtime_prerequisites
+  ]
 }
 
 data "aws_iam_policy_document" "eks_irsa_assume_role" {
@@ -540,11 +570,9 @@ resource "aws_eks_pod_identity_association" "managed" {
 resource "helm_release" "managed" {
   for_each = local.eks_helm_releases
 
-  name                = each.value.name
-  repository          = each.value.repository
-  chart               = each.value.chart
-  repository_username = lookup(local.helm_repository_username_by_release, each.key, null)
-  repository_password = lookup(local.helm_repository_password_by_release, each.key, null)
+  name       = each.value.name
+  repository = each.value.repository
+  chart      = each.value.chart
 
   namespace        = try(each.value.namespace, "kube-system")
   version          = try(each.value.version, null)
@@ -585,14 +613,10 @@ resource "helm_release" "managed" {
     }
   }
 
-  lifecycle {
-    # ECR OCI auth token rotates frequently and causes no-op in-place updates.
-    ignore_changes = [repository_password]
-  }
-
   depends_on = [
     terraform_data.eks_runtime_prerequisites,
     terraform_data.eks_helm_single_cluster_guard,
+    terraform_data.helm_ecr_oci_registry_login,
     aws_iam_role.eks_irsa,
     aws_iam_role_policy_attachment.eks_irsa,
     aws_iam_role_policy.eks_irsa,
