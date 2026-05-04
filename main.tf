@@ -360,19 +360,39 @@ locals {
 
   launch_templates_referencing_cluster_context = anytrue(flatten([
     for launch_template in try(local.resources_by_type.ec2_launch_templates, []) : [
-      for security_group in try(launch_template.vpc_security_groups, try(launch_template.security_groups, [])) :
-      length(regexall("\\$\\{\\s*(cluster|eks_cluster)\\[", tostring(security_group))) > 0
+      concat(
+        [
+          for security_group in try(launch_template.vpc_security_groups, try(launch_template.security_groups, [])) :
+          length(regexall("\\$\\{\\s*(cluster|eks_cluster)\\[", tostring(security_group))) > 0
+        ],
+        [
+          try(trimspace(tostring(launch_template.user_data_cluster)) != "", false),
+          length(regexall(
+            "@@(eks_)?cluster\\.",
+            (
+              try(launch_template.user_data_base64, null) != null ? "" :
+              try(trimspace(launch_template.user_data_file), "") != "" ? file(
+                startswith(trimspace(launch_template.user_data_file), "/") ?
+                trimspace(launch_template.user_data_file) :
+                "${path.module}/${trimspace(launch_template.user_data_file)}"
+              ) :
+              try(tostring(launch_template.user_data), "")
+            )
+          )) > 0
+        ]
+      )
     ]
   ]))
 
   eks_cluster_attributes_by_name = local.launch_templates_referencing_cluster_context ? {
     for name, mod in module.eks_clusters :
     name => {
-      name              = mod.name
-      arn               = mod.arn
-      endpoint          = mod.endpoint
-      version           = mod.version
-      security_group_id = mod.cluster_security_group_id
+      name                  = mod.name
+      arn                   = mod.arn
+      endpoint              = mod.endpoint
+      certificate_authority = mod.certificate_authority_data
+      version               = mod.version
+      security_group_id     = mod.cluster_security_group_id
     }
   } : {}
 

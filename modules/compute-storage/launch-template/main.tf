@@ -22,12 +22,93 @@ locals {
     ]
   }
 
+  launch_template_cluster_reference_names = {
+    for template_name, security_groups in local.launch_template_security_group_inputs :
+    template_name => distinct(flatten([
+      for security_group in security_groups : [
+        for match in regexall("\\$\\{\\s*(cluster|eks_cluster)\\[\\\"([^\\\"]+)\\\"\\]", security_group) :
+        match[1]
+      ]
+    ]))
+  }
+
+  launch_template_user_data_file_paths = {
+    for template_name, launch_template in local.ec2_launch_templates :
+    template_name => (
+      try(launch_template.user_data_base64, null) != null || try(trimspace(launch_template.user_data_file), "") == "" ? null :
+      startswith(trimspace(launch_template.user_data_file), "/") ?
+      trimspace(launch_template.user_data_file) :
+      "${path.root}/${trimspace(launch_template.user_data_file)}"
+    )
+  }
+
+  launch_template_user_data_plain = {
+    for template_name, launch_template in local.ec2_launch_templates :
+    template_name => (
+      try(launch_template.user_data_base64, null) != null ? null :
+      local.launch_template_user_data_file_paths[template_name] != null ? file(local.launch_template_user_data_file_paths[template_name]) :
+      try(launch_template.user_data, null) != null ? tostring(launch_template.user_data) :
+      null
+    )
+  }
+
+  launch_template_user_data_cluster_names = {
+    for template_name, launch_template in local.ec2_launch_templates :
+    template_name => (
+      try(trimspace(tostring(launch_template.user_data_cluster)), "") != "" ? trimspace(tostring(launch_template.user_data_cluster)) :
+      length(local.launch_template_cluster_reference_names[template_name]) == 1 ? local.launch_template_cluster_reference_names[template_name][0] :
+      null
+    )
+  }
+
+  launch_template_user_data_cluster_contexts = {
+    for template_name, cluster_name in local.launch_template_user_data_cluster_names :
+    template_name => cluster_name != null ? try(var.eks_cluster_attributes_by_name[cluster_name], null) : null
+  }
+
+  launch_template_resolved_user_data = {
+    for template_name, user_data in local.launch_template_user_data_plain :
+    template_name => user_data == null ? null : replace(
+      replace(
+        replace(
+          replace(
+            replace(
+              replace(
+                user_data,
+                "@@cluster.name@@",
+                tostring(try(local.launch_template_user_data_cluster_contexts[template_name].name, ""))
+              ),
+              "@@cluster.arn@@",
+              tostring(try(local.launch_template_user_data_cluster_contexts[template_name].arn, ""))
+            ),
+            "@@cluster.endpoint@@",
+            tostring(try(local.launch_template_user_data_cluster_contexts[template_name].endpoint, ""))
+          ),
+          "@@cluster.certificate_authority@@",
+          tostring(try(local.launch_template_user_data_cluster_contexts[template_name].certificate_authority, ""))
+        ),
+        "@@cluster.version@@",
+        tostring(try(local.launch_template_user_data_cluster_contexts[template_name].version, ""))
+      ),
+      "@@cluster.security_group_id@@",
+      tostring(try(local.launch_template_user_data_cluster_contexts[template_name].security_group_id, ""))
+    )
+  }
+
   launch_template_uses_cluster_context = {
     for template_name, security_groups in local.launch_template_security_group_inputs :
-    template_name => anytrue([
-      for security_group in security_groups :
-      length(regexall("\\$\\{\\s*(cluster|eks_cluster)\\[", security_group)) > 0
-    ])
+    template_name => anytrue(
+      concat(
+        [
+          for security_group in security_groups :
+          length(regexall("\\$\\{\\s*(cluster|eks_cluster)\\[", security_group)) > 0
+        ],
+        [
+          local.launch_template_user_data_cluster_names[template_name] != null,
+          length(regexall("@@(eks_)?cluster\\.", coalesce(local.launch_template_user_data_plain[template_name], ""))) > 0
+        ]
+      )
+    )
   }
 
   launch_template_template_contexts = {
@@ -96,14 +177,29 @@ resource "aws_launch_template" "managed" {
 
   user_data = (
     try(each.value.user_data_base64, null) != null ? each.value.user_data_base64 :
-    try(trimspace(each.value.user_data_file), "") != "" ? base64encode(file(
-      startswith(trimspace(each.value.user_data_file), "/") ?
-      trimspace(each.value.user_data_file) :
-      "${path.root}/${trimspace(each.value.user_data_file)}"
-    )) :
-    try(each.value.user_data, null) != null ? base64encode(each.value.user_data) :
+    local.launch_template_resolved_user_data[each.key] != null ? base64encode(local.launch_template_resolved_user_data[each.key]) :
     null
   )
+
+  lifecycle {
+    precondition {
+      condition = (
+        try(each.value.user_data_base64, null) != null ||
+        local.launch_template_user_data_plain[each.key] == null ||
+        length(regexall("@@(eks_)?cluster\\.", coalesce(local.launch_template_user_data_plain[each.key], ""))) == 0 ||
+        local.launch_template_user_data_cluster_names[each.key] != null
+      )
+      error_message = "Launch template user_data_file cluster tokens require user_data_cluster, or exactly one cluster reference in vpc_security_groups/security_groups."
+    }
+
+    precondition {
+      condition = (
+        local.launch_template_user_data_cluster_names[each.key] == null ||
+        contains(keys(var.eks_cluster_attributes_by_name), coalesce(local.launch_template_user_data_cluster_names[each.key], ""))
+      )
+      error_message = "Launch template user_data_cluster must reference an EKS cluster defined in eks_clusters."
+    }
+  }
 
   dynamic "iam_instance_profile" {
     for_each = try(each.value.iam_instance_profile, try(each.value.iam_instance_profile_name, null)) == null ? [] : [try(each.value.iam_instance_profile, each.value.iam_instance_profile_name)]

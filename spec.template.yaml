@@ -430,6 +430,10 @@ project:
     # - user_data_file/user_data/user_data_base64: Optional boot script inputs.
     #   Priority is user_data_base64 > user_data_file > user_data.
     #   user_data_file is resolved from repository root (or absolute path).
+    #   user_data_file/user_data support bash-safe cluster tokens:
+    #   @@cluster.endpoint@@ and @@cluster.certificate_authority@@
+    #   Set user_data_cluster when it cannot be inferred from a single cluster
+    #   reference in vpc_security_groups/security_groups.
     # - vpc_security_groups: Security groups by logical name or ID.
     #   Supports templatestring() interpolation with:
     #   ${security_group["<name>"]},
@@ -448,6 +452,7 @@ project:
           instance_type: "m6i.large"
           key_name: "<optional-keypair-name>"
           user_data_file: "user-data/<optional-launch-template-user-data-file>"
+          user_data_cluster: "<optional-eks-cluster-name-for-user-data-tokens>"
           update_default_version: true
           ebs_optimized: true
           monitoring: true

@@ -137,7 +137,7 @@ project:
 - IAM Group membership: `iam_groups.users`(별칭 `iam_groups.user_names`)로 `aws_iam_group_membership` 기반 그룹 멤버십을 관리할 수 있고, 필요하면 `membership_name`으로 멤버십 리소스 이름을 지정할 수 있습니다.
 - Inline IAM policy: `iam_roles.inline_policies`, `iam_users.inline_policies`, `iam_groups.inline_policies`, `eks_irsa_roles.inline_policies`는 `document_json` 또는 `document_url` 중 하나를 사용할 수 있습니다(예: `https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/refs/heads/main/docs/install/iam_policy.json`).
 - Launch Template AMI: `image_id`는 `ami-*` 또는 AMI 이름을 받을 수 있고, AMI 이름 조회는 `image_owners`(기본 `["self"]`), `image_most_recent`(기본 `true`)로 제어합니다.
-- Launch Template user data: 우선순위는 `user_data_base64` > `user_data_file` > 인라인 `user_data`이며, `user_data_file`은 저장소 루트 기준 상대경로/절대경로를 모두 지원합니다.
+- Launch Template user data: 우선순위는 `user_data_base64` > `user_data_file` > 인라인 `user_data`이며, `user_data_file`은 저장소 루트 기준 상대경로/절대경로를 모두 지원합니다. `user_data_file`/인라인 `user_data`에서는 bash와 충돌하지 않는 EKS cluster 토큰(`@@cluster.endpoint@@`, `@@cluster.certificate_authority@@` 등)을 사용할 수 있고, `vpc_security_groups`/`security_groups`에서 단일 cluster 참조를 추론할 수 없으면 `user_data_cluster`를 지정합니다.
 - Launch Template 보간: `vpc_security_groups`/`security_groups`는 `templatestring()`으로 `${security_group["<name>"]}`, `${cluster["<eks-cluster-name>"].security_group_id}`(별칭 `${eks_cluster["<eks-cluster-name>"].security_group_id}`)를 참조할 수 있습니다.
 - EC2 Auto Scaling Group: `ec2_auto_scaling_groups`는 관리 중인 `ec2_launch_templates`와 `ec2_alb_target_groups`를 논리 이름으로 참조할 수 있으며, 기존 Launch Template 이름/ID나 Target Group ARN도 그대로 받을 수 있습니다.
 - RDS Parameter Group: `rds_parameter_groups`로 `aws_db_parameter_group`를 관리할 수 있고, `rds_instances.parameter_group_name`은 관리 대상 parameter group 이름으로 해석됩니다.
