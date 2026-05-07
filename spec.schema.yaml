@@ -85,6 +85,12 @@ properties:
               $ref: "#/$defs/generic_resource_array"
             ec2_instances:
               $ref: "#/$defs/generic_resource_array"
+            ebs_volumes:
+              $ref: "#/$defs/generic_resource_array"
+            efs_file_systems:
+              type: array
+              items:
+                $ref: "#/$defs/efs_file_system_item"
             ec2_launch_templates:
               $ref: "#/$defs/generic_resource_array"
             ec2_auto_scaling_groups:
@@ -198,6 +204,145 @@ $defs:
     type: object
     additionalProperties:
       type: string
+
+  efs_file_system_item:
+    type: object
+    additionalProperties: true
+    required:
+      - name
+    allOf:
+      - if:
+          required:
+            - throughput_mode
+          properties:
+            throughput_mode:
+              const: provisioned
+        then:
+          required:
+            - provisioned_throughput_in_mibps
+    properties:
+      name:
+        type: string
+        minLength: 1
+      creation_token:
+        type: string
+      encrypted:
+        type: boolean
+      kms_key_id:
+        type: string
+      performance_mode:
+        type: string
+      throughput_mode:
+        type: string
+      provisioned_throughput_in_mibps:
+        type: number
+      availability_zone:
+        type: string
+      availability_zone_name:
+        type: string
+      lifecycle_policy:
+        type: object
+        additionalProperties: true
+      lifecycle_policies:
+        type: array
+        items:
+          type: object
+          additionalProperties: true
+      backup:
+        type: object
+        additionalProperties: true
+      backup_policy:
+        type: object
+        additionalProperties: true
+        properties:
+          enabled:
+            type: boolean
+      mount_targets:
+        type: array
+        items:
+          $ref: "#/$defs/efs_mount_target_item"
+      access_points:
+        type: array
+        items:
+          $ref: "#/$defs/efs_access_point_item"
+      tags:
+        $ref: "#/$defs/string_map"
+
+  efs_mount_target_item:
+    type: object
+    additionalProperties: true
+    anyOf:
+      - required: [subnet]
+      - required: [subnet_name]
+      - required: [subnet_id]
+    properties:
+      subnet:
+        type: string
+        minLength: 1
+      subnet_name:
+        type: string
+        minLength: 1
+      subnet_id:
+        type: string
+        minLength: 1
+      ip_address:
+        type: string
+      security_groups:
+        type: array
+        items:
+          type: string
+      security_group_names:
+        type: array
+        items:
+          type: string
+      security_group_ids:
+        type: array
+        items:
+          type: string
+
+  efs_access_point_item:
+    type: object
+    additionalProperties: true
+    properties:
+      name:
+        type: string
+      posix_user:
+        type: object
+        additionalProperties: true
+        required:
+          - uid
+          - gid
+        properties:
+          uid:
+            type: number
+          gid:
+            type: number
+          secondary_gids:
+            type: array
+            items:
+              type: number
+      root_directory:
+        type: object
+        additionalProperties: true
+        properties:
+          path:
+            type: string
+          creation_info:
+            type: object
+            additionalProperties: true
+            required:
+              - owner_uid
+              - owner_gid
+              - permissions
+            properties:
+              owner_uid:
+                type: number
+              owner_gid:
+                type: number
+              permissions:
+                type: string
+      tags:
+        $ref: "#/$defs/string_map"
 
   eks_cluster_item:
     type: object

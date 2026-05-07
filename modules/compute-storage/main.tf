@@ -10,10 +10,25 @@ module "rds" {
 module "ec2" {
   source = "./ec2"
 
+  resources_by_type                       = var.resources_by_type
+  subnet_ids_by_name                      = var.subnet_ids_by_name
+  security_group_ids_by_name              = var.security_group_ids_by_name
+  iam_instance_profile_names_by_role_name = var.iam_instance_profile_names_by_role_name
+}
+
+module "ebs" {
+  source = "./ebs"
+
+  resources_by_type        = var.resources_by_type
+  ec2_instance_ids_by_name = module.ec2.instance_ids_by_name
+}
+
+module "efs" {
+  source = "./efs"
+
   resources_by_type          = var.resources_by_type
   subnet_ids_by_name         = var.subnet_ids_by_name
   security_group_ids_by_name = var.security_group_ids_by_name
-  iam_instance_profile_names_by_role_name = var.iam_instance_profile_names_by_role_name
 }
 
 module "launch_template" {

@@ -279,6 +279,62 @@ project:
               destination:
                 type: "ip"
                 value: "0.0.0.0/0"
+        - name: "my-tst-tf-efs-sg"
+          vpc: "my-tst-tf-vpc-ap1"
+          revoke_rules_on_delete: false
+          inbound_rules:
+            - description: "Allow NFS from web SG"
+              protocol: "tcp"
+              port_range: 2049
+              source:
+                type: "security-group"
+                value: "my-tst-tf-web-sg"
+          outbound_rules:
+            - description: "Allow all outbound"
+              protocol: "-1"
+              port_range:
+                from: 0
+                to: 0
+              destination:
+                type: "ip"
+                value: "0.0.0.0/0"
+    - ebs_volumes:
+        - name: "my-tst-tf-app-ebs-ap1a"
+          availability_zone: "ap-southeast-1a"
+          size: 100
+          type: "gp3"
+          iops: 3000
+          throughput: 125
+          encrypted: true
+          tags:
+            Purpose: "app-data"
+    - efs_file_systems:
+        - name: "my-tst-tf-shared-efs"
+          encrypted: true
+          performance_mode: "generalPurpose"
+          throughput_mode: "bursting"
+          lifecycle_policy:
+            transition_to_ia: "AFTER_30_DAYS"
+          backup_policy:
+            enabled: true
+          mount_targets:
+            - subnet: "my-tst-tf-sbn-pri-ap1a"
+              security_groups:
+                - "my-tst-tf-efs-sg"
+            - subnet: "my-tst-tf-sbn-pri-ap1c"
+              security_groups:
+                - "my-tst-tf-efs-sg"
+          access_points:
+            - name: "app"
+              posix_user:
+                uid: 1000
+                gid: 1000
+              root_directory:
+                path: "/app"
+                creation_info:
+                  owner_uid: 1000
+                  owner_gid: 1000
+                  permissions: "0755"
     - ec2_load_balancers:
         - name: "my-tst-tf-web-alb"
           vpc: "my-tst-tf-vpc-ap1"

@@ -129,6 +129,8 @@ project:
 - CodeDeploy: `codedeploy_applications`, `codedeploy_deployment_groups`를 지원합니다. Deployment Group의 `service_role_name`은 `iam_roles` 논리 이름으로 해석되고, `autoscaling_groups`와 `load_balancer_info.target_groups`도 논리 이름 기반 참조를 지원합니다.
 - RDS Enhanced Monitoring: 리터럴 ARN은 `rds_instances.monitoring_role_arn`, IAM Role 이름 참조는 `rds_instances.monitoring_role_name`을 사용하세요(`iam_roles`/기존 IAM Role 조회 지원).
 - EC2 IAM Profile: EC2 trust(`ec2.amazonaws.com`)가 있는 IAM Role에 대해 동일 이름의 IAM Instance Profile을 자동 생성하므로 `ec2_instances.iam_role`에 Role 이름을 직접 사용할 수 있습니다.
+- EBS 볼륨: `ebs_volumes`로 독립 `aws_ebs_volume`을 생성할 수 있고, 관리 중인 EC2 논리 이름 또는 실제 EC2 instance ID로 attach 할 수 있습니다.
+- EFS 파일 시스템: `efs_file_systems`로 EFS 파일 시스템, mount target, 선택적 backup policy, lifecycle policy, access point를 생성할 수 있습니다. `name`은 필수이고, 각 mount target은 `subnet`, `subnet_name`, `subnet_id` 중 하나가 필요하며, `throughput_mode = provisioned`일 때는 `provisioned_throughput_in_mibps`가 필요합니다.
 
 #### 기능별 메모
 
@@ -141,6 +143,7 @@ project:
 - Launch Template 보간: `vpc_security_groups`/`security_groups`는 `templatestring()`으로 `${security_group["<name>"]}`, `${cluster["<eks-cluster-name>"].security_group_id}`(별칭 `${eks_cluster["<eks-cluster-name>"].security_group_id}`)를 참조할 수 있습니다.
 - EC2 Auto Scaling Group: `ec2_auto_scaling_groups`는 관리 중인 `ec2_launch_templates`와 `ec2_alb_target_groups`를 논리 이름으로 참조할 수 있으며, 기존 Launch Template 이름/ID나 Target Group ARN도 그대로 받을 수 있습니다.
 - RDS Parameter Group: `rds_parameter_groups`로 `aws_db_parameter_group`를 관리할 수 있고, `rds_instances.parameter_group_name`은 관리 대상 parameter group 이름으로 해석됩니다.
+- EBS/EFS 스토리지: zonal block storage는 `ebs_volumes`를 사용하고, 공유 NFS endpoint는 `efs_file_systems.mount_targets`, 애플리케이션별 POSIX 경로는 `efs_file_systems.access_points`로 정의합니다.
 - ACM 인증서: `acm_certificates`는 `source=managed`(Terraform으로 ACM 인증서 생성)와 `source=existing`(기존 ACM 인증서 재사용)를 지원합니다. `name` 필드로 논리 참조명을 지정할 수 있고(미지정 시 `domain_name` 사용), `region` 필드로 인증서 리전도 지정할 수 있습니다(CloudFront용은 `us-east-1`). `source=existing`에서는 `certificate_arn`을 직접 지정하거나, `domain_name` + `lookup_statuses`/`most_recent` 조합으로 조회할 수 있습니다. 관리형 인증서는 `wait_for_issued`(선택적으로 `validation_record_fqdns` 함께 사용)로 `ISSUED` 상태까지 대기할 수 있습니다.
 - ALB 리스너: `ec2_load_balancers.listeners`는 `default_action.type = fixed-response`를 지원하며, `fixed_response.content_type`, `fixed_response.status_code`, `fixed_response.message_body`(선택)를 지정할 수 있습니다. HTTPS 리스너 인증서는 `certificate_arn` 직접 지정 또는 `acm_certificate_name`(`acm_certificate_domain_name` 별칭)으로 `acm_certificates[].name`(없으면 `domain_name`)을 참조해 사용할 수 있습니다. `default_action`을 생략하면 첫 번째 `target_groups` 항목으로 forward 액션이 기본 적용됩니다.
 - KMS 키 import 참조: `kms_keys`는 `existing_key_id`를 지원해 기존 Customer-managed KMS 키를 신규 생성 없이 참조할 수 있습니다. 기존 alias를 Terraform으로 관리하지 않으려면 `create_alias: false`를 사용하세요.

@@ -29,3 +29,27 @@ output "alb_dns_names_by_name" {
 output "s3_bucket_regional_domain_names_by_name" {
   value = module.s3.bucket_regional_domain_names_by_name
 }
+
+output "ebs_volume_ids_by_name" {
+  value = module.ebs.volume_ids_by_name
+}
+
+output "ebs_volume_arns_by_name" {
+  value = module.ebs.volume_arns_by_name
+}
+
+output "efs_file_system_ids_by_name" {
+  value = module.efs.file_system_ids_by_name
+}
+
+output "efs_file_system_arns_by_name" {
+  value = module.efs.file_system_arns_by_name
+}
+
+output "efs_access_point_ids_by_key" {
+  value = module.efs.access_point_ids_by_key
+}
+
+output "efs_access_point_arns_by_key" {
+  value = module.efs.access_point_arns_by_key
+}

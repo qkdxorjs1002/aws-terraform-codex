@@ -105,7 +105,7 @@ locals {
         ],
         [
           local.launch_template_user_data_cluster_names[template_name] != null,
-          length(regexall("@@(eks_)?cluster\\.", coalesce(local.launch_template_user_data_plain[template_name], ""))) > 0
+          length(regexall("@@(eks_)?cluster\\.", local.launch_template_user_data_plain[template_name] == null ? "" : local.launch_template_user_data_plain[template_name])) > 0
         ]
       )
     )
@@ -186,7 +186,7 @@ resource "aws_launch_template" "managed" {
       condition = (
         try(each.value.user_data_base64, null) != null ||
         local.launch_template_user_data_plain[each.key] == null ||
-        length(regexall("@@(eks_)?cluster\\.", coalesce(local.launch_template_user_data_plain[each.key], ""))) == 0 ||
+        length(regexall("@@(eks_)?cluster\\.", local.launch_template_user_data_plain[each.key] == null ? "" : local.launch_template_user_data_plain[each.key])) == 0 ||
         local.launch_template_user_data_cluster_names[each.key] != null
       )
       error_message = "Launch template user_data_file cluster tokens require user_data_cluster, or exactly one cluster reference in vpc_security_groups/security_groups."
@@ -195,7 +195,7 @@ resource "aws_launch_template" "managed" {
     precondition {
       condition = (
         local.launch_template_user_data_cluster_names[each.key] == null ||
-        contains(keys(var.eks_cluster_attributes_by_name), coalesce(local.launch_template_user_data_cluster_names[each.key], ""))
+        contains(keys(var.eks_cluster_attributes_by_name), local.launch_template_user_data_cluster_names[each.key] == null ? "" : local.launch_template_user_data_cluster_names[each.key])
       )
       error_message = "Launch template user_data_cluster must reference an EKS cluster defined in eks_clusters."
     }

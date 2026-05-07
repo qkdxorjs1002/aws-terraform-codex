@@ -420,6 +420,71 @@ project:
             instance_metadata_tags: "enabled" # enabled | disabled
           credit_specification:
             cpu_credits: "unlimited"
+    # ebs_volumes:
+    # - name: Logical EBS volume identifier.
+    # - availability_zone: AZ where the volume is created.
+    # - size/type/iops/throughput: Volume capacity and performance settings.
+    # - encrypted/kms_key_id/snapshot_id: Encryption and source snapshot settings.
+    # - attachments[]: Optional EC2 attachments by managed instance name or literal instance ID.
+    - ebs_volumes:
+        - name: "<ebs-volume-name>"
+          availability_zone: "<region>a"
+          size: 100
+          type: "gp3"
+          iops: 3000
+          throughput: 125
+          encrypted: true
+          kms_key_id: "<optional-kms-key-id-or-arn>"
+          snapshot_id: "<optional-snapshot-id>"
+          multi_attach_enabled: false
+          final_snapshot: false
+          attachments:
+            - instance: "<ec2-name-or-instance-id>"
+              device_name: "/dev/sdf"
+              force_detach: false
+              skip_destroy: false
+              stop_instance_before_detaching: false
+          tags:
+            Purpose: "app-data"
+    # efs_file_systems:
+    # - name: Required logical EFS file system identifier.
+    # - encrypted/kms_key_id/performance_mode/throughput_mode: File system settings.
+    # - provisioned_throughput_in_mibps: Required when throughput_mode is provisioned.
+    # - lifecycle_policy: Optional transition policy for infrequent access.
+    # - backup_policy.enabled: Enables or disables EFS automatic backups.
+    # - mount_targets[]: Optional NFS endpoints; each item requires subnet/subnet_name/subnet_id.
+    # - access_points[]: Optional EFS access points with POSIX and root directory settings.
+    #   If posix_user is set, uid and gid are required. If creation_info is set,
+    #   owner_uid, owner_gid, and permissions are required.
+    - efs_file_systems:
+        - name: "<efs-file-system-name>"
+          encrypted: true
+          kms_key_id: "<optional-kms-key-id-or-arn>"
+          performance_mode: "generalPurpose" # generalPurpose | maxIO
+          throughput_mode: "bursting" # bursting | provisioned | elastic
+          provisioned_throughput_in_mibps: 128
+          lifecycle_policy:
+            transition_to_ia: "AFTER_30_DAYS"
+            transition_to_primary_storage_class: "AFTER_1_ACCESS"
+          backup_policy:
+            enabled: true
+          mount_targets:
+            - subnet: "<private-subnet-name>"
+              security_groups:
+                - "<efs-security-group-name>"
+          access_points:
+            - name: "<efs-access-point-name>"
+              posix_user:
+                uid: 1000
+                gid: 1000
+              root_directory:
+                path: "/app"
+                creation_info:
+                  owner_uid: 1000
+                  owner_gid: 1000
+                  permissions: "0755"
+          tags:
+            Purpose: "shared-storage"
     # ec2_launch_templates:
     # - name: Logical launch template identifier.
     # - template_name: Optional AWS launch template name override (defaults to name).

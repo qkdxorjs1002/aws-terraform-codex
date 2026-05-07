@@ -140,6 +140,39 @@ output "codedeploy_deployment_groups" {
   value       = module.compute_storage.codedeploy_deployment_group_names_by_key
 }
 
+output "ebs_volumes" {
+  description = "Created EBS volumes"
+  value = {
+    for name, id in module.compute_storage.ebs_volume_ids_by_name :
+    name => {
+      id  = id
+      arn = module.compute_storage.ebs_volume_arns_by_name[name]
+    }
+  }
+}
+
+output "efs_file_systems" {
+  description = "Created EFS file systems"
+  value = {
+    for name, id in module.compute_storage.efs_file_system_ids_by_name :
+    name => {
+      id  = id
+      arn = module.compute_storage.efs_file_system_arns_by_name[name]
+    }
+  }
+}
+
+output "efs_access_points" {
+  description = "Created EFS access points"
+  value = {
+    for key, id in module.compute_storage.efs_access_point_ids_by_key :
+    key => {
+      id  = id
+      arn = module.compute_storage.efs_access_point_arns_by_key[key]
+    }
+  }
+}
+
 output "acm_certificates" {
   description = "Created ACM certificates keyed by domain name"
   value       = module.app_platform.acm_certificate_arns_by_domain_name

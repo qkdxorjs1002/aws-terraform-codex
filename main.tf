@@ -144,6 +144,15 @@ locals {
       flatten([for endpoint in try(local.resources_by_type.vpc_endpoints, []) : try(endpoint.subnet_ids, [])]),
       flatten([for network_acl in try(local.resources_by_type.network_acls, []) : try(network_acl.associated_subnets, [])]),
       [for ec2 in try(local.resources_by_type.ec2_instances, []) : try(ec2.subnet, null)],
+      flatten([for file_system in try(local.resources_by_type.efs_file_systems, []) : [
+        for mount_target in try(file_system.mount_targets, []) : try(mount_target.subnet, null)
+      ]]),
+      flatten([for file_system in try(local.resources_by_type.efs_file_systems, []) : [
+        for mount_target in try(file_system.mount_targets, []) : try(mount_target.subnet_name, null)
+      ]]),
+      flatten([for file_system in try(local.resources_by_type.efs_file_systems, []) : [
+        for mount_target in try(file_system.mount_targets, []) : try(mount_target.subnet_id, null)
+      ]]),
       flatten([for autoscaling_group in try(local.resources_by_type.ec2_auto_scaling_groups, []) : try(autoscaling_group.subnets, [])]),
       flatten([for rds in try(local.resources_by_type.rds_instances, []) : try(rds.subnets, [])]),
       flatten([for cluster in try(local.resources_by_type.eks_clusters, []) : try(cluster.subnet_ids, [])]),
@@ -176,6 +185,15 @@ locals {
       flatten([for endpoint in try(local.resources_by_type.vpc_endpoints, []) : try(endpoint.security_group_names, [])]),
       flatten([for endpoint in try(local.resources_by_type.vpc_endpoints, []) : try(endpoint.security_group_ids, [])]),
       flatten([for ec2 in try(local.resources_by_type.ec2_instances, []) : try(ec2.security_groups, [])]),
+      flatten([for file_system in try(local.resources_by_type.efs_file_systems, []) : [
+        for mount_target in try(file_system.mount_targets, []) : try(mount_target.security_groups, [])
+      ]]),
+      flatten([for file_system in try(local.resources_by_type.efs_file_systems, []) : [
+        for mount_target in try(file_system.mount_targets, []) : try(mount_target.security_group_names, [])
+      ]]),
+      flatten([for file_system in try(local.resources_by_type.efs_file_systems, []) : [
+        for mount_target in try(file_system.mount_targets, []) : try(mount_target.security_group_ids, [])
+      ]]),
       flatten([for alb in try(local.resources_by_type.albs, []) : try(alb.security_groups, [])]),
       flatten([for lambda_function in try(local.resources_by_type.lambda_functions, []) : try(lambda_function.vpc_config.security_group_ids, [])]),
       flatten([for lambda_function in try(local.resources_by_type.lambda_functions, []) : try(lambda_function.vpc_config.security_group_names, [])]),
