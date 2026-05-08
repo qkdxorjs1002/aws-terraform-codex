@@ -420,6 +420,18 @@ project:
             instance_metadata_tags: "enabled" # enabled | disabled
           credit_specification:
             cpu_credits: "unlimited"
+    # eip_addresses:
+    # - name: Logical Elastic IP identifier.
+    # - instance/instance_name/instance_id: Optional EC2 attachment target.
+    #   Managed EC2 logical names and literal EC2 instance IDs are both accepted.
+    # - associate_with_private_ip: Optional private IP on the target instance.
+    - eip_addresses:
+        - name: "<eip-name>"
+          domain: "vpc"
+          instance: "<ec2-name-or-instance-id>"
+          associate_with_private_ip: "<optional-private-ip>"
+          tags:
+            Purpose: "public-access"
     # ebs_volumes:
     # - name: Logical EBS volume identifier.
     # - availability_zone: AZ where the volume is created.

@@ -22,6 +22,18 @@ output "codedeploy_deployment_group_names_by_key" {
   value = module.codedeploy.deployment_group_names_by_key
 }
 
+output "eip_allocation_ids_by_name" {
+  value = module.eip.allocation_ids_by_name
+}
+
+output "eip_public_ips_by_name" {
+  value = module.eip.public_ips_by_name
+}
+
+output "eip_arns_by_name" {
+  value = module.eip.arns_by_name
+}
+
 output "alb_dns_names_by_name" {
   value = module.alb.load_balancer_dns_names_by_name
 }

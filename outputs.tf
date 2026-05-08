@@ -140,6 +140,18 @@ output "codedeploy_deployment_groups" {
   value       = module.compute_storage.codedeploy_deployment_group_names_by_key
 }
 
+output "eip_addresses" {
+  description = "Created Elastic IP addresses"
+  value = {
+    for name, allocation_id in module.compute_storage.eip_allocation_ids_by_name :
+    name => {
+      allocation_id = allocation_id
+      public_ip     = module.compute_storage.eip_public_ips_by_name[name]
+      arn           = module.compute_storage.eip_arns_by_name[name]
+    }
+  }
+}
+
 output "ebs_volumes" {
   description = "Created EBS volumes"
   value = {

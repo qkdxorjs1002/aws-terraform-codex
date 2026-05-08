@@ -129,6 +129,7 @@ project:
 - CodeDeploy: `codedeploy_applications`, `codedeploy_deployment_groups`를 지원합니다. Deployment Group의 `service_role_name`은 `iam_roles` 논리 이름으로 해석되고, `autoscaling_groups`와 `load_balancer_info.target_groups`도 논리 이름 기반 참조를 지원합니다.
 - RDS Enhanced Monitoring: 리터럴 ARN은 `rds_instances.monitoring_role_arn`, IAM Role 이름 참조는 `rds_instances.monitoring_role_name`을 사용하세요(`iam_roles`/기존 IAM Role 조회 지원).
 - EC2 IAM Profile: EC2 trust(`ec2.amazonaws.com`)가 있는 IAM Role에 대해 동일 이름의 IAM Instance Profile을 자동 생성하므로 `ec2_instances.iam_role`에 Role 이름을 직접 사용할 수 있습니다.
+- Elastic IP: `eip_addresses`로 독립 `aws_eip`를 생성할 수 있고, 관리 중인 EC2 논리 이름 또는 실제 EC2 instance ID에 연결할 수 있습니다.
 - EBS 볼륨: `ebs_volumes`로 독립 `aws_ebs_volume`을 생성할 수 있고, 관리 중인 EC2 논리 이름 또는 실제 EC2 instance ID로 attach 할 수 있습니다.
 - EFS 파일 시스템: `efs_file_systems`로 EFS 파일 시스템, mount target, 선택적 backup policy, lifecycle policy, access point를 생성할 수 있습니다. `name`은 필수이고, 각 mount target은 `subnet`, `subnet_name`, `subnet_id` 중 하나가 필요하며, `throughput_mode = provisioned`일 때는 `provisioned_throughput_in_mibps`가 필요합니다.
 

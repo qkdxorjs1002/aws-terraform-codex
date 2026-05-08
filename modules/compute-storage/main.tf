@@ -16,6 +16,13 @@ module "ec2" {
   iam_instance_profile_names_by_role_name = var.iam_instance_profile_names_by_role_name
 }
 
+module "eip" {
+  source = "./eip"
+
+  resources_by_type        = var.resources_by_type
+  ec2_instance_ids_by_name = module.ec2.instance_ids_by_name
+}
+
 module "ebs" {
   source = "./ebs"
 

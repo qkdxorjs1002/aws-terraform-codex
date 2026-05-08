@@ -85,6 +85,8 @@ properties:
               $ref: "#/$defs/generic_resource_array"
             ec2_instances:
               $ref: "#/$defs/generic_resource_array"
+            eip_addresses:
+              $ref: "#/$defs/generic_resource_array"
             ebs_volumes:
               $ref: "#/$defs/generic_resource_array"
             efs_file_systems:

@@ -127,6 +127,7 @@ Use this checklist while editing:
 - CodeDeploy: `codedeploy_applications` and `codedeploy_deployment_groups` are supported. Deployment groups can resolve `service_role_name` from `iam_roles`, `autoscaling_groups` from logical ASG names, and `load_balancer_info.target_groups` from logical ALB target group names.
 - RDS enhanced monitoring: use `rds_instances.monitoring_role_arn` for a literal ARN, or `rds_instances.monitoring_role_name` for a role name resolved from `iam_roles`/existing IAM roles.
 - EC2 IAM profiles: for IAM roles with EC2 trust (`ec2.amazonaws.com`), the module auto-creates a same-name IAM instance profile so `ec2_instances.iam_role` can reference the role name directly.
+- Elastic IPs: `eip_addresses` provisions standalone `aws_eip` resources and can associate them with managed EC2 instances by logical name or with literal EC2 instance IDs.
 - EBS volumes: `ebs_volumes` provisions standalone `aws_ebs_volume` resources and can attach them to managed EC2 instances by logical name or to literal EC2 instance IDs.
 - EFS file systems: `efs_file_systems` provisions EFS file systems, mount targets, optional backup policy, lifecycle policy, and access points. `name` is required; each mount target requires `subnet`, `subnet_name`, or `subnet_id`; `provisioned_throughput_in_mibps` is required when `throughput_mode = provisioned`.
 
